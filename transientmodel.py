@@ -9,7 +9,7 @@ Dependencies:
 re for regular expression pattern matching in output files
 os for calling the sss and bash processes via command interface, file existence for debug
 numpy for arrays and mathematical methods
-coolprop for water properties (assuming aqueous mixture is approximated by water)
+CoolProp for water properties (assuming aqueous mixture is approximated by water)
     - Imported in module file "tm_material"
 '''
 
@@ -112,46 +112,46 @@ def main():
     fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
     # Material addition loop
     print("Beginning main calculation...")
-    while keff < 1.01:
-        # Proceed in time
-        timer += c.DELTA_T  # s
-        # Read previous output file for information and calculate new changes
-        fission_profile = fo.count_fissions(detfilename)
-        number_neutrons = propagate_neutrons(keff, lifetime, number_neutrons)
-        # Correlation between flux profile and fission density
-        fissions = [frac * number_neutrons / nubar for frac in fission_profile]
-        number_fissions = sum(fissions)
-        total_fissions += number_fissions
-        # Increase total height, requires creating new material information
-        tot_height = increase_height(tot_height, 0.2)  # cm
-        # Re-apply materials with incresed height
-        # (Adding material to system, maintaining even dimension split)
-        materials = set_materials(c.ELEMS, c.NDENS, tot_height, tot_radius, temp=temperatures)
-        filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
-                   re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
-                   ".inp"
-        fo.write_file(filename, materials, tot_height)
-        outfilename = filename + "_res.m"
-        detfilename = filename + "_det0.m"
-        if not path.isfile(outfilename):
-            system("bash -c \"sss {}\"".format(filename))
-        lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        temperatures = []  # K, reset of list
-        counter = 0  # Two dimensional loops prevent use of enumerate()
-        for material_layer in materials:
-            for material in material_layer:
-                material.calc_temp(fissions[counter])
-                temperatures.append(material.temp)  # K
-                counter += 1
-        maxtemp = max(temperatures)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
-        print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
-        print("Current k-eff: {}".format(keff))
-        print("Maximum k-eff: {}".format(keffmax))
-        print("Number of fissions: {0:E}".format(sum(fissions)))
-        print("Maximum temperature: {}".format(maxtemp))
-    # Material expansion loop
-    print("Finished adding material")
+    # while keff < 1.01:
+    #     # Proceed in time
+    #     timer += c.DELTA_T  # s
+    #     # Read previous output file for information and calculate new changes
+    #     fission_profile = fo.count_fissions(detfilename)
+    #     number_neutrons = propagate_neutrons(keff, lifetime, number_neutrons)
+    #     # Correlation between flux profile and fission density
+    #     fissions = [frac * number_neutrons / nubar for frac in fission_profile]
+    #     number_fissions = sum(fissions)
+    #     total_fissions += number_fissions
+    #     # Increase total height, requires creating new material information
+    #     tot_height = increase_height(tot_height, 0.2)  # cm
+    #     # Re-apply materials with incresed height
+    #     # (Adding material to system, maintaining even dimension split)
+    #     materials = set_materials(c.ELEMS, c.NDENS, tot_height, tot_radius, temp=temperatures)
+    #     filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
+    #                re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
+    #                ".inp"
+    #     fo.write_file(filename, materials, tot_height)
+    #     outfilename = filename + "_res.m"
+    #     detfilename = filename + "_det0.m"
+    #     if not path.isfile(outfilename):
+    #         system("bash -c \"sss {}\"".format(filename))
+    #     lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
+    #     temperatures = []  # K, reset of list
+    #     counter = 0  # Two dimensional loops prevent use of enumerate()
+    #     for material_layer in materials:
+    #         for material in material_layer:
+    #             material.calc_temp(fissions[counter])
+    #             temperatures.append(material.temp)  # K
+    #             counter += 1
+    #     maxtemp = max(temperatures)
+    #     fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
+    #     print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
+    #     print("Current k-eff: {}".format(keff))
+    #     print("Maximum k-eff: {}".format(keffmax))
+    #     print("Number of fissions: {0:E}".format(sum(fissions)))
+    #     print("Maximum temperature: {}".format(maxtemp))
+    # # Material expansion loop
+    # print("Finished adding material")
     print("Now expanding system by temperature...")
     # Store heights in two-dimensional matrix
     heights = np.zeros([c.NUM_RADIAL, c.NUM_AXIAL])
@@ -160,7 +160,7 @@ def main():
             heights[rad_ind, ax_ind] = material.height
     with open("results.txt", 'a') as appfile:
         appfile.write("# Expanding material #\n")
-    while keff > 1.0:
+    while keff > 0.97:
         # Proceed in time
         timer += c.DELTA_T  # s
         # Read previous output file for information and calculate new changes
