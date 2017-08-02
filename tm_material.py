@@ -16,7 +16,7 @@ import tm_constants as c  # Required for the included tag dictionaries
 class Material():
     '''Generic class for the material in question, and associated geometry'''
     def __init__(self, matnum, elems, ndens, dens, height, base_height, radius,
-                 inner_radius, temp=300):
+                 inner_radius, pres=101325, temp=300):
         self.matnum = matnum
         self.elems = elems
         self.ndens = ndens  # a/b-cm
@@ -32,7 +32,7 @@ class Material():
         self.delta_temp = 0.0  # K, placeholder until required for expansion
         self.atoms = [0.0] * len(ndens)  # _, placeholder until calculated
         # Pressure: Assume atmospheric conditions (allow for expansion of fluid)
-        self.pressure = 101325  # Pa
+        self.av_pressure = pres  # Pa
         self.xs_tag = "03c"
         self.sab_tag = "00t"
         if temp != 300:  # K

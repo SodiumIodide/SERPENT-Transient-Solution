@@ -33,17 +33,27 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
     for ind, nden in enumerate(ndens):
         dens[ind] = nden / 6.022e23 * 1e24 * c.AWEIGHT[ind]  # g/cm^3
     den = sum(dens)  # g/cm^3
+    # Initial pressures are assumed to be linear, based on rho-g-h model
+    # All pressures are absolute, not gauge
     for radius in calc_radii(tot_radius):
-        base_height = 0  # cm, start at planar origin
+        base_height = 0.0  # cm, start at planar origin
         r_list = []  # Second dimension empty list for appending
+        # From bottom to top, heights being added
+        half_height = 0.0  # m, placeholder
         for height in calc_heights(tot_height):
+            # The half_height value is calculated for the initial value from base
+            if half_height == 0.0:
+                half_height = height / 2
+            av_height = tot_height - height + half_height
+            av_pres = den * c.GRAV * av_height / 1000 * 100**3 + c.ATM  # Pa
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
-                                       base_height, radius, inner_radius, temperature))
+                                       base_height, radius, inner_radius, av_pres,
+                                       temperature))
             else:
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
-                                       base_height, radius, inner_radius))
+                                       base_height, radius, inner_radius, av_pres))
             mat_counter += 1
             base_height = height  # cm
         materials.append(r_list)

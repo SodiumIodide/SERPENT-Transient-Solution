@@ -1,6 +1,11 @@
 '''
 Import only module. Contains constants for the Python calculations.
+
+Dependencies:
+numpy for mathematical constants (if elected for use)
 '''
+
+from numpy import pi as PI
 
 # Calculation parameters
 TIMESTEP_MAGNITUDE = -3
@@ -11,6 +16,15 @@ RAD = 15  # cm
 NUM_AXIAL = 5  # Currently limited to < 10 by Serpent definitions
 NUM_RADIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
+# Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
+THRESHOLD = 1e15 * PI * RAD**2 * INIT_HEIGHT  # fissions/liter
+
+# Equation of state
+GRAV = 9.80665  # m/s^2
+ATM = 101325  # Pa, atmospheric value
+# Radius of radiolytic gas bubbles, from Forehand dissertation, 1981
+# -> Independent of pressure, temperature, surface tension, gas and fissile concentration
+RAD_GAS_BUBBLE = 5e-6 / 100  # m
 
 # Uranyl nitrate
 ELEMS = ["1001", "7014", "8016", "92234", "92235", "92236", "92238"]
