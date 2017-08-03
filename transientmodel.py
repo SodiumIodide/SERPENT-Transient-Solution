@@ -20,6 +20,7 @@ import numpy as np
 
 # Shared
 from tm_material import Material  # Requires CoolProp
+from tm_volaccel import volume_matrix
 import tm_constants as c
 import tm_fileops as fo
 
@@ -80,6 +81,34 @@ def calc_radii(tot_rad):
     rad_diff = tot_rad / c.NUM_RADIAL  # cm
     radii = list(map(lambda ind: ind * rad_diff, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
+
+def update_vol_accel(materials):
+    '''
+    Updates volume acceleration in each material
+    Called by the update_heights() function, not explicitly calculated independently
+    '''
+    # Materials are arranged by radius, then by height
+    # Annular materials are subject to the same pressure fluctuations
+    # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
+    # -> axially, along the axis of possible expansion (no walls)
+    for material_layer in materials:
+        # All materials in each layer should be of the same mass and base area
+        with material_layer[0] as ml0:
+            mat_mass = ml0.mass / 1000  # kg
+            mat_area = ml0.base / 100**2  # m^2
+        mult_mat = volume_matrix(c.NUM_AXIAL)  # Generic parameter term
+        pres_vec = np.array([m.pressure for m in material_layer] + [c.ATM])  # Pa
+        vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
+        for ind, material in enumerate(material_layer):
+            material.set_vol_accel(vol_accel_vec[ind])
+
+def update_heights(materials):
+    '''Updates the height information of each material'''
+    # Mostly here to decrease code bloat and containerize calculations
+    update_vol_accel(materials)
+    for material_layer in materials:
+        for material in material_layer:
+            material.update_height(c.DELTA_T)
 
 def main():
     '''Main wrapper'''

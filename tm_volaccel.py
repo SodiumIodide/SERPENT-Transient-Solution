@@ -31,11 +31,12 @@ def pressure_matrix(num_axial):
                 inverse_switch *= -1
     return np.flipud(p_sub_matrix)
 
-def volume_matrix(num_axial, p_matrix):
+def volume_mult_matrix(num_axial):
     '''
     Perform substitutions to fill in volume matrix
     '''
     num_cols = num_axial + 1
+    p_matrix = pressure_matrix(num_axial)
     v_sub_matrix = np.zeros([num_axial, num_cols]).astype(int)
     for row_counter in range(num_axial):
         bar_vector = np.zeros([num_axial]).astype(int)
@@ -69,7 +70,7 @@ def test():
     num_axial = 17  # Can be changed to anything for testing purposes
     p_mat = pressure_matrix(num_axial)
     print("\np_mat:\n{}\n".format(p_mat))
-    v_mat = volume_matrix(num_axial, p_mat)
+    v_mat = volume_mult_matrix(num_axial)
     print("\nv_mat:\n{}\n".format(v_mat))
 
 if __name__ == '__main__':
