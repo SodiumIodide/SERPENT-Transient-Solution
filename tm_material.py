@@ -120,8 +120,8 @@ class Material():
         newheight = self.height + delta_height  # cm
         self.append_height(newheight)  # Book-keeping for number densities and such
 
-    def update_pressure(self, fissions):
-        '''Self-regulate the expansion of the material'''
+    def update_state(self, fissions):
+        '''Self-regulate the expansion state of the material'''
         # Material constants are assumed to closely match those of water for an
         # aqueous solution
         beta_0 = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,

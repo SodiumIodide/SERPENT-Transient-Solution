@@ -140,6 +140,7 @@ def main():
         for material in material_layer:
             temperatures.append(material.temp)
     maxtemp = max(temperatures)  # K
+    update_heights(materials)
     number_neutrons = c.INIT_NEUTRONS  # Start of the flux
     lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
@@ -180,7 +181,7 @@ def main():
     #     counter = 0  # Two dimensional loops prevent use of enumerate()
     #     for material_layer in materials:
     #         for material in material_layer:
-    #             material.calc_temp(fissions[counter])
+    #             material.update_state(fissions[counter])
     #             temperatures.append(material.temp)  # K
     #             counter += 1
     #     maxtemp = max(temperatures)
@@ -217,11 +218,12 @@ def main():
                     height_shift = heights[rad_ind, ax_ind - 1] - material.base_height
                     material.base_height = heights[rad_ind, ax_ind - 1]
                     material.height += height_shift
-                material.expand()
+                material.update_state()
                 heights[rad_ind, ax_ind] = material.height
                 # Keep checks on total height such that void data doesn't get overwritten
                 if tot_height < material.height:
                     tot_height = material.height
+        update_heights(materials)
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
