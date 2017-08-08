@@ -20,7 +20,7 @@ import numpy as np
 
 # Shared
 from tm_material import Material  # Requires CoolProp
-from tm_volaccel import volume_matrix
+from tm_volaccel import volume_mult_matrix
 import tm_constants as c
 import tm_fileops as fo
 
@@ -82,6 +82,7 @@ def calc_radii(tot_rad):
     radii = list(map(lambda ind: ind * rad_diff, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
 
+# NOTE: Ideally shouldn't be explicitly called independently
 def update_vol_accel(materials):
     '''
     Updates volume acceleration in each material
@@ -96,7 +97,7 @@ def update_vol_accel(materials):
         with material_layer[0] as ml0:
             mat_mass = ml0.mass / 1000  # kg
             mat_area = ml0.base / 100**2  # m^2
-        mult_mat = volume_matrix(c.NUM_AXIAL)  # Generic parameter term
+        mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         pres_vec = np.array([m.pressure for m in material_layer] + [c.ATM])  # Pa
         vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
         for ind, material in enumerate(material_layer):
@@ -151,7 +152,7 @@ def main():
     fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
     # Material addition loop
     print("Beginning main calculation...")
-    # while keff < 1.01:
+    # while keff < 1.05:
     #     # Proceed in time
     #     timer += c.DELTA_T  # s
     #     # Read previous output file for information and calculate new changes

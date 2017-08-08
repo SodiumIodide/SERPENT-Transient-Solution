@@ -26,15 +26,15 @@ ATM = 101325  # Pa, atmospheric value
 # -> Independent of pressure, temperature, surface tension, gas and fissile concentration
 RAD_GAS_BUBBLE = 5e-6 / 100  # m
 RH2 = 8.3145 / 1.0078250321 * 100**3  # m^3-Pa/kg-K, specific ideal gas constant for H-1
+# Radiolytic gas constant from Forehand dissertation
+# -> (rough average of KEWB Core 5, CRAC 05, and CRAC 08)
+RADIOLYTIC_G = 2.30e-4  # kg/MJ
 
 # Uranyl nitrate
 ELEMS = ["1001", "7014", "8016", "92234", "92235", "92236", "92238"]
 NDENS = [6.258e-2, 1.569e-3, 3.576e-2, 1.060e-6, 1.686e-4, 4.350e-7, 1.170e-5]  # a/b-cm
 AWEIGHT = [1.0078250321, 14.003074005, 15.9949146196, 234.040952, 235.043930,
            236.045568, 238.050788]  # g/mol
-
-# Radiolytic gas constants
-RADIOLYTIC_G = 2.0e-3  # g/J
 
 # Convergence and entropy constants
 NUM_PARTICLES = 10000  # Neutrons per cycle
