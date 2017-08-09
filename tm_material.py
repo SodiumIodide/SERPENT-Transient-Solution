@@ -107,7 +107,7 @@ class Material():
                                              PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')
                                              / c.RAD_GAS_BUBBLE))
 
-    def expand_old(self):
+    def old_expand(self):
         '''Self-regulate the expansion of the material'''
         # The isobaric expansion coefficient of water is calculated
         expansion = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,

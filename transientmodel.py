@@ -98,7 +98,7 @@ def update_vol_accel(materials):
             mat_mass = ml0.mass / 1000  # kg
             mat_area = ml0.base / 100**2  # m^2
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
-        pres_vec = np.array([m.pressure for m in material_layer] + [c.ATM])  # Pa
+        pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
         vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
         for ind, material in enumerate(material_layer):
             material.set_vol_accel(vol_accel_vec[ind])
