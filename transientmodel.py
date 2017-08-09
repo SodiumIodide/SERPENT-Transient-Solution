@@ -212,6 +212,7 @@ def main():
         number_fissions = sum(fissions)
         total_fissions += number_fissions
         # Begin total expansion of material
+        update_heights(materials)
         for rad_ind, material_layer in enumerate(materials):
             for ax_ind, material in enumerate(material_layer):
                 if ax_ind != 0:
@@ -223,7 +224,6 @@ def main():
                 # Keep checks on total height such that void data doesn't get overwritten
                 if tot_height < material.height:
                     tot_height = material.height
-        update_heights(materials)
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
