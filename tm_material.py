@@ -103,9 +103,9 @@ class Material():
     def __update_volfrac_gas(self):
         '''Update the volume fraction of gas, f_e; called from self.produce_gas()'''
         self.volfrac_gas = self.mass_h2 / 1000 * c.RH2 * self.temp \
-                           / (self.volume / 100**3 * (self.av_pressure + 2 * 
-                                             PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')
-                                             / c.RAD_GAS_BUBBLE))
+                           / (self.volume / 100**3
+                           * (self.av_pressure + 2 * PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')
+                              / c.RAD_GAS_BUBBLE))
 
     def old_expand(self):
         '''Self-regulate the expansion of the material'''

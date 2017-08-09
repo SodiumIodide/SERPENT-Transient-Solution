@@ -101,6 +101,8 @@ def update_vol_accel(materials):
         #     mat_area = ml0.base / 100**2  # m^2
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
+        # TODO: Debug this: calculation may have to do with dot product, resulting in negative matrices
+        print(pres_vec)
         vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
         for ind, material in enumerate(material_layer):
             material.set_vol_accel(vol_accel_vec[ind])
@@ -234,11 +236,12 @@ def main():
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
-        # Do not need to recalculate masses (thus volumes) for materials at this stage
-        fo.write_file(filename, materials, tot_height)
-        system("bash -c \"sss {}\"".format(filename))
         outfilename = filename + "_res.m"
         detfilename = filename + "_det0.m"
+        # Do not need to recalculate masses (thus volumes) for materials at this stage
+        fo.write_file(filename, materials, tot_height)
+        if not path.isfile(outfilename):
+            system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
         temperatures = []  # K, reset of list
         counter = 0  # Two dimensional loops prevent use of enumerate()
