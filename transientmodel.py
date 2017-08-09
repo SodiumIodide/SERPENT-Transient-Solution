@@ -94,9 +94,11 @@ def update_vol_accel(materials):
     # -> axially, along the axis of possible expansion (no walls)
     for material_layer in materials:
         # All materials in each layer should be of the same mass and base area
-        with material_layer[0] as ml0:
-            mat_mass = ml0.mass / 1000  # kg
-            mat_area = ml0.base / 100**2  # m^2
+        mat_mass = material_layer[0].mass / 1000  # kg
+        mat_area = material_layer[0].base / 100**2  # m^2
+        # with material_layer[0] as ml0:
+        #     mat_mass = ml0.mass / 1000  # kg
+        #     mat_area = ml0.base / 100**2  # m^2
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
         vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
@@ -213,17 +215,22 @@ def main():
         total_fissions += number_fissions
         # Begin total expansion of material
         update_heights(materials)
+        counter = 0  # Two inner loops prevent use of enumerate()
+        temperatures = []  # K, reset of list
         for rad_ind, material_layer in enumerate(materials):
             for ax_ind, material in enumerate(material_layer):
                 if ax_ind != 0:
                     height_shift = heights[rad_ind, ax_ind - 1] - material.base_height
                     material.base_height = heights[rad_ind, ax_ind - 1]
                     material.height += height_shift
-                material.update_state()
+                material.update_state(fissions[counter])
                 heights[rad_ind, ax_ind] = material.height
                 # Keep checks on total height such that void data doesn't get overwritten
                 if tot_height < material.height:
                     tot_height = material.height
+                temperatures.append(material.temp)  # K
+                counter += 1
+        maxtemp = max(temperatures)  # K
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
@@ -235,12 +242,6 @@ def main():
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
         temperatures = []  # K, reset of list
         counter = 0  # Two dimensional loops prevent use of enumerate()
-        for material_layer in materials:
-            for material in material_layer:
-                material.calc_temp(fissions[counter])
-                temperatures.append(material.temp)  # K
-                counter += 1
-        maxtemp = max(temperatures)
         fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))

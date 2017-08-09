@@ -126,7 +126,7 @@ class Material():
         # aqueous solution
         beta_0 = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,
                          'Q', 0.0, 'WATER')  # 1/K
-        kappa_0 = PropsSI('ISOTHERMAL_EXPANSION_COEFFICIENT', 'T', self.temp,
+        kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
                           'Q', 0.0, 'WATER')  # 1/Pa
         surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')  # N/m
         self.__produce_gas(fissions)
