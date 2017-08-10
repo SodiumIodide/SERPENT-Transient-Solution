@@ -52,7 +52,7 @@ class Material():
     # Setter method used here for clarity
     def set_vol_accel(self, newva):
         '''Adjust volume acceleration'''
-        self.vol_accel = newva  # cm^3/s^2s
+        self.vol_accel = newva  # cm^3/s^2
 
     def update_height(self, delta_t):
         '''Calculate new height based on volume acceleration and time'''
@@ -145,7 +145,6 @@ class Material():
         self.__update_sab_tag()
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
                           / (self.kappa * self.volume / 100**3) * self.delta_vol  # Pa
-        print(self.delta_temp)
         self.av_pressure += self.delta_pres  # Pa
 
     def __calc_init(self):

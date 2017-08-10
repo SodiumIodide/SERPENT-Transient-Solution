@@ -96,10 +96,8 @@ def update_vol_accel(materials):
         # All materials in each layer should be of the same mass and base area
         mat_mass = material_layer[0].mass / 1000  # kg
         mat_area = material_layer[0].base / 100**2  # m^2
-        # with material_layer[0] as ml0:
-        #     mat_mass = ml0.mass / 1000  # kg
-        #     mat_area = ml0.base / 100**2  # m^2
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
+        # Note (syntax) that atmosphere is appended, not universally added
         pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
         # TODO: Debug this: calculation may have to do with dot product, resulting in negative matrices
         #print(pres_vec)
@@ -256,7 +254,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except ValueError:
-        pass
+    # except ValueError:
+        # pass
     finally:
         print("\nProgram terminated\n")
