@@ -63,7 +63,7 @@ def write_file(filename, materials, tot_height):
                 fhan.write("surf {0}{1} pz {2}\n".format(rad_ind + 1, mat_ind + 1, material.height))
         # Overall boundaries
         fhan.write("surf 1001 pz 0\n")
-        fhan.write("surf 1002 pz {}\n".format(tot_height))
+        fhan.write("surf 1002 pz {}\n\n".format(tot_height))
         # Cell data
         fhan.write("\n% Cells\n")
         # Cells are numbered by n, where n is the material number

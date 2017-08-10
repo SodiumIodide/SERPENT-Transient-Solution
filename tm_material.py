@@ -97,7 +97,7 @@ class Material():
     def __produce_gas(self, fissions):
         '''Produce a mass of radiolytic gas in the solution; called from self.update_pressure()'''
         energydep = fissions * 180 * 1.6022e-19  # MJ
-        self.mass_h2 = c.RADIOLYTIC_G * energydep * 1000  # g
+        self.mass_h2 += c.RADIOLYTIC_G * energydep * 1000  # g
         self.__update_volfrac_gas()
 
     def __update_volfrac_gas(self):
@@ -129,7 +129,8 @@ class Material():
         kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
                           'Q', 0.0, 'WATER')  # 1/Pa
         surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')  # N/m
-        self.__produce_gas(fissions)
+        if fissions / self.volume * 0.001 > c.THRESHOLD:  # fissions/liter
+            self.__produce_gas(fissions)
         self.beta = beta_0 * (1 - self.volfrac_gas) + self.volfrac_gas / self.temp \
                     * (self.av_pressure + 2 * surf_tens / c.RAD_GAS_BUBBLE) \
                     / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)
@@ -144,6 +145,7 @@ class Material():
         self.__update_sab_tag()
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
                           / (self.kappa * self.volume / 100**3) * self.delta_vol  # Pa
+        print(self.delta_temp)
         self.av_pressure += self.delta_pres  # Pa
 
     def __calc_init(self):

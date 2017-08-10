@@ -45,7 +45,7 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
             # The half_height value is calculated for the initial value from base
             if half_height == 0.0:
                 half_height = height / 2
-            av_height = tot_height - height + half_height
+            av_height = (tot_height - height + half_height) / 100  # m
             av_pres = den * c.GRAV * av_height / 1000 * 100**3 + c.ATM  # Pa
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
@@ -102,7 +102,7 @@ def update_vol_accel(materials):
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
         # TODO: Debug this: calculation may have to do with dot product, resulting in negative matrices
-        print(pres_vec)
+        #print(pres_vec)
         vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
         for ind, material in enumerate(material_layer):
             material.set_vol_accel(vol_accel_vec[ind])
@@ -221,10 +221,11 @@ def main():
         temperatures = []  # K, reset of list
         for rad_ind, material_layer in enumerate(materials):
             for ax_ind, material in enumerate(material_layer):
+                # Fix heights from expansion
                 if ax_ind != 0:
-                    height_shift = heights[rad_ind, ax_ind - 1] - material.base_height
-                    material.base_height = heights[rad_ind, ax_ind - 1]
-                    material.height += height_shift
+                    height_shift = heights[rad_ind, ax_ind - 1] - material.base_height  # cm
+                    material.base_height = heights[rad_ind, ax_ind - 1]  # cm
+                    material.height += height_shift  # cm
                 material.update_state(fissions[counter])
                 heights[rad_ind, ax_ind] = material.height
                 # Keep checks on total height such that void data doesn't get overwritten

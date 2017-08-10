@@ -17,7 +17,7 @@ NUM_AXIAL = 5  # Currently limited to < 10 by Serpent definitions
 NUM_RADIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
 # Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
-THRESHOLD = 1e15 / (PI * RAD**2 * INIT_HEIGHT)  # fissions/liter
+THRESHOLD = 1e15  # fissions/liter
 
 # Equation of state
 GRAV = 9.80665  # m/s^2
