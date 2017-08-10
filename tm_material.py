@@ -44,6 +44,7 @@ class Material():
         self.av_pressure = pres  # Pa
         self.xs_tag = "03c"
         self.sab_tag = "00t"
+        self.gas_production_flag = False  # Once radiolytic gas is produced, produce it
         if temp != 300:  # K
             self.__update_xs_tag()
             self.__update_sab_tag()
@@ -129,8 +130,10 @@ class Material():
         kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
                           'Q', 0.0, 'WATER')  # 1/Pa
         surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')  # N/m
-        if fissions / self.volume * 0.001 > c.THRESHOLD:  # fissions/liter
+        if fissions / self.volume / 0.001 > c.THRESHOLD or self.gas_production_flag:  # fissions/liter
             self.__produce_gas(fissions)
+            if not self.gas_production_flag:
+                self.gas_production_flag = True
         self.beta = beta_0 * (1 - self.volfrac_gas) + self.volfrac_gas / self.temp \
                     * (self.av_pressure + 2 * surf_tens / c.RAD_GAS_BUBBLE) \
                     / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)
@@ -139,12 +142,13 @@ class Material():
         # Constant volume specific heat
         spec_heat = PropsSI('O', 'T', self.temp, 'P', self.av_pressure, 'WATER')  # J/kg-K
         self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-13 - self.beta \
-                          / self.kappa * self.delta_vol) / self.mass  # K
+                          / self.kappa * self.delta_vol / 100**3) / (self.mass / 1000)  # K
         self.temp += self.delta_temp  # K
         self.__update_xs_tag()
         self.__update_sab_tag()
+        print(self.kappa)
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
-                          / (self.kappa * self.volume / 100**3) * self.delta_vol  # Pa
+                          / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # Pa
         self.av_pressure += self.delta_pres  # Pa
 
     def __calc_init(self):

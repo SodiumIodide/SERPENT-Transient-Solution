@@ -5,7 +5,7 @@ Dependencies:
 numpy for mathematical constants (if elected for use)
 '''
 
-from numpy import pi as PI
+#from numpy import pi as PI
 
 # Calculation parameters
 TIMESTEP_MAGNITUDE = -3
