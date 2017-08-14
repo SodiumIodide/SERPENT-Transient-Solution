@@ -21,7 +21,8 @@ THRESHOLD = 1e15  # fissions/liter
 
 # Equation of state
 GRAV = 9.80665  # m/s^2
-ATM = 101325  # Pa, atmospheric value
+ATM_ABS = 101325  # Pa, atmospheric value
+ATM = 0  # Pa, calculated with gauge pressures instead of absolute
 # Radius of radiolytic gas bubbles, from Forehand dissertation, 1981
 # -> Independent of pressure, temperature, surface tension, gas and fissile concentration
 RAD_GAS_BUBBLE = 5e-6 / 100  # m

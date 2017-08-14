@@ -232,7 +232,7 @@ def main():
                 temperatures.append(material.temp)  # K
                 counter += 1
         maxtemp = max(temperatures)  # K
-        filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
+        filename = re.sub(r'\d', r'', filename.rstrip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
         outfilename = filename + "_res.m"

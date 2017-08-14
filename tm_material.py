@@ -140,15 +140,15 @@ class Material():
         self.kappa = kappa_0 * (1 - self.volfrac_gas) + self.volfrac_gas \
                      / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)
         # Constant volume specific heat
-        spec_heat = PropsSI('O', 'T', self.temp, 'P', self.av_pressure, 'WATER')  # J/kg-K
+        spec_heat = PropsSI('O', 'T', self.temp, 'P', self.av_pressure + c.ATM_ABS, 'WATER')  # J/kg-K
         self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-13 - self.beta \
                           / self.kappa * self.delta_vol / 100**3) / (self.mass / 1000)  # K
         self.temp += self.delta_temp  # K
         self.__update_xs_tag()
         self.__update_sab_tag()
-        print(self.kappa)
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
-                          / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # Pa
+                          / (self.kappa * self.volume) * self.delta_vol  # Pa
+        print(self.av_pressure)
         self.av_pressure += self.delta_pres  # Pa
 
     def __calc_init(self):
