@@ -16,7 +16,7 @@ import tm_constants as c  # Required for the included tag dictionaries
 class Material():
     '''Generic class for the material in question, and associated geometry'''
     def __init__(self, matnum, elems, ndens, dens, height, base_height, radius,
-                 inner_radius, pres=c.ATM, temp=300):
+                 inner_radius, com_height, pres=c.ATM, temp=300):
         self.matnum = matnum
         self.elems = elems
         self.ndens = ndens  # a/b-cm
@@ -32,9 +32,6 @@ class Material():
         self.kappa = 0.0  # 1/Pa, isothermal compressibility, placeholder until needed
         self.beta = 0.0  # 1/K, isobaric compressibility, placeholder until needed
         self.delta_temp = 0.0  # K, placeholder until required for expansion
-        self.vol_accel = 0.0  # cm^3/s^2, initially zero upon definition
-        self.vol_vel = 0.0  # cm^3/s, initially zero upon definition
-        self.delta_vol = 0.0  # cm^3, initially zero upon definition
         self.delta_temp = 0.0  # K, initially zero upon definition
         self.delta_pres = 0.0  # Pa, initially zero upon definition
         self.atoms = [0.0] * len(ndens)  # _, placeholder until calculated
@@ -42,6 +39,12 @@ class Material():
         self.mass_h2 = 0.0  # g, initially no radiolytic gas in solution
         # Pressure: Assume atmospheric conditions (allow for expansion of fluid)
         self.av_pressure = pres  # MPa, gauge value
+        self.__calc_bottom_pressure()  # MPa, calculate from average pressure input
+        self.com_height = com_height  # cm
+        self.com_accel = 0.0  # cm/s^2, initially not in motion
+        self.com_vel = 0.0  # cm/s, initially not in motion
+        self.delta_com = 0.0  # cm, placeholder, no initial delta
+        self.delta_vol = 0.0  # cm^3, placeholder, no initial delta
         self.xs_tag = "03c"
         self.sab_tag = "00t"
         self.gas_production_flag = False  # Once radiolytic gas is produced, produce it
@@ -51,37 +54,32 @@ class Material():
         self.__calc_init()
 
     # Setter method used here for clarity
-    def set_vol_accel(self, newva):
-        '''Adjust volume acceleration'''
-        self.vol_accel = newva  # cm^3/s^2
+    def set_com_accel(self, newcoma):
+        '''Adjust center of mass acceleration'''
+        self.com_accel = newcoma  # cm/s^2
+        self.update_com_height()
 
-    def update_height(self, delta_t):
+    def update_com_height(self):
         '''Calculate new height based on volume acceleration and time'''
         # Reliant on Newtonian kinematics equations
-        vol_vel_i = self.vol_vel  # cm^3/s
-        vol_vel_f = vol_vel_i + self.vol_accel * delta_t  # cm^3/s
-        self.vol_vel = vol_vel_f  # cm^3/s, update information for next snapshot
-        self.delta_vol = vol_vel_i * delta_t + 1 / 2 * self.vol_accel * delta_t**2  # cm^3
-        height_diff = self.delta_vol / self.base  # cm
-        self.append_height(height_diff, add=True)  # Number density bookkeeping
+        com_vel_i = self.com_vel  # cm/s
+        com_vel_f = com_vel_i + self.com_accel * c.DELTA_T  # cm/s
+        self.com_vel = com_vel_f  # cm/s, update information for next snapshot
+        self.delta_com = com_vel_i * c.DELTA_T + 1 / 2 * self.com_accel * c.DELTA_T**2  # cm
+        self.com_height += self.delta_com  # cm
+
+    def update_heights(self, bheight, theight):
+        '''Change heights based on external calculations related to center of mass positions'''
+        self.base_height = bheight  # cm
+        self.delta_vol = (theight - bheight) * self.base - self.volume  # cm^3
+        self.append_height(theight - bheight)
 
     def append_height(self, newheight, add=False):
         '''Append a new volume after adjusting height'''
-        self.height = self.height + newheight if add else newheight
-        self.volume = self.base * self.height  # cm
+        self.height = self.height + newheight if add else newheight  # cm
+        self.volume = self.base * self.height  # cm^3
+        self.dens = self.mass / self.volume  # g/cm^3
         self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
-
-    def old_calc_temp(self, fissions):
-        '''Adjust material temperature'''
-        energydep = fissions * 180 * 1.6022e-13  # J
-        # Based on intensive properties (specific heat) of water
-        # This is an aqueous solution of material
-        spec_heat = PropsSI('C', 'T', self.temp, 'P', self.av_pressure, 'WATER')  # J/kg-K
-        newtemp = self.temp + energydep / (self.mass / 1e3) / spec_heat  # K
-        self.delta_temp = newtemp - self.temp  # K
-        self.temp = newtemp  # K
-        self.__update_xs_tag()
-        self.__update_sab_tag()
 
     def __update_xs_tag(self):
         '''Update the materials cross-section tag; called when new temperature calculated'''
@@ -109,20 +107,7 @@ class Material():
                                  * PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER')
                                  / c.RAD_GAS_BUBBLE))
 
-    def old_expand(self):
-        '''Self-regulate the expansion of the material'''
-        # The isobaric expansion coefficient of water is calculated
-        expansion = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,
-                            'P', self.av_pressure, 'WATER')  # 1/K
-        # Coefficient is defined as: alpha = 1/V * (dV/dT) over constant P
-        # Where V is volume, T is temperature, P is pressure, and alpha is the coefficient
-        # In this case, changing differential into delta, and solving for a delta height
-        # while maintaining base area
-        delta_height = self.delta_temp * self.volume * expansion / self.base  # cm
-        newheight = self.height + delta_height  # cm
-        self.append_height(newheight)  # Book-keeping for number densities and such
-
-    def update_state(self, fissions):
+    def update_state(self, fissions, top_pres):
         '''Self-regulate the expansion state of the material'''
         # Material constants are assumed to closely match those of water for an
         # aqueous solution
@@ -151,6 +136,15 @@ class Material():
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
                           / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # MPa
         self.av_pressure += self.delta_pres  # MPa
+        self.__calc_bottom_pressure(top_pres)
+
+    def __calc_bottom_pressure(self, top_pres=None):
+        '''Called to calculate bottom pressure, overloaded with top pressure if known'''
+        if top_pres is None:
+            self.bot_pressure = self.av_pressure + self.dens / 2 * c.GRAV * self.height \
+                                * 100**2 / 1000 / 1e6  # MPa
+        else:
+            self.bot_pressure = 2 * self.av_pressure - top_pres
 
     def __calc_init(self):
         '''Self-called method to calculate some constants after initial file run'''

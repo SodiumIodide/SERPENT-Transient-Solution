@@ -19,7 +19,7 @@ from os import system, path
 import numpy as np
 
 # Shared
-from tm_material import Material  # Requires CoolProp
+from tm_material2 import Material  # Requires CoolProp
 from tm_volaccel import volume_mult_matrix
 import tm_constants as c
 import tm_fileops as fo
@@ -46,7 +46,7 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
             if half_height == 0.0:
                 half_height = height / 2
             av_height = (tot_height - height + half_height) / 100  # m
-            av_pres = den * c.GRAV * av_height / 1000 * 100**3 + c.ATM  # Pa
+            av_pres = den * c.GRAV * av_height / 1000 * 100**3 / 1e6 + c.ATM  # MPa
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
@@ -91,19 +91,42 @@ def update_vol_accel(materials):
     # Materials are arranged by radius, then by height
     # Annular materials are subject to the same pressure fluctuations
     # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
-    # -> axially, along the axis of possible expansion (no walls)
+    # -> axially, along the axis of possible expansion (not into walls)
     for material_layer in materials:
         # All materials in each layer should be of the same mass and base area
         mat_mass = material_layer[0].mass / 1000  # kg
         mat_area = material_layer[0].base / 100**2  # m^2
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         # Note (syntax) that atmosphere is appended, not universally added
-        pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # Pa
+        pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # MPa
         # TODO: Debug this: calculation may have to do with dot product, resulting in negative matrices
         #print(pres_vec)
-        vol_accel_vec = 4 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3  # cm^3/s^2
+        dissipation_vec = np.array([2 * mat_area * c.DISSIPATION * m.vol_vel for m in material_layer])
+        vol_accel_vec = 4 * 1e6 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3 \
+                        - dissipation_vec  # cm^3/s^2
         for ind, material in enumerate(material_layer):
             material.set_vol_accel(vol_accel_vec[ind])
+
+def update_com_accel(materials):
+    '''
+    Updates center of mass acceleration in each material
+    Called by the update_heights2() function, not explicitly calculated independently
+    '''
+    # Materials are arranged by radius, then by height
+    # Annular materials are subject to the same pressure fluctuations
+    # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
+    # -> axially, along the axis of possible expansion (not into walls)
+    for material_layer in materials:
+        # All materials in each layer should be of the same mass and base area
+        mat_mass = material_layer[0].mass / 1000  # kg
+        mat_area = material_layer[0].base / 100**2  # m^2
+        top_pressure = c.ATM  # MPa, gauge, revised value at each stage
+        # Materials/pressures assigned bottom to top, need top to bottom
+        for material in reversed(material_layer):
+            com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
+                        * 1e6 * 100  # cm/s^2
+            material.set_com_accel(com_accel)
+            top_pressure = material.bot_pressure  # MPa, gauge
 
 def update_heights(materials):
     '''Updates the height information of each material'''
@@ -112,6 +135,10 @@ def update_heights(materials):
     for material_layer in materials:
         for material in material_layer:
             material.update_height(c.DELTA_T)
+
+def update_heights2(materials):
+    '''Updates the height information of each material'''
+    update_com_accel(materials)
 
 def main():
     '''Main wrapper'''
