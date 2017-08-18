@@ -255,8 +255,11 @@ def main():
         counter = 0  # Two inner loops prevent use of enumerate()
         temperatures = []  # K, reset of list
         for material_layer in materials:
-            for material in material_layer:
-                material.update_state(fissions[counter])
+            # Pressure goes from top down, so materials reversed
+            top_pres = c.ATM  # MPa, gauge, changes by iteration
+            for material in reversed(material_layer):
+                material.update_state([fis for fis in reversed(fissions)][counter], top_pres)
+                top_pres = material.bot_pressure  # MPa, gauge
                 # Keep checks on total height such that void data doesn't get overwritten
                 if tot_height < material.height:
                     tot_height = material.height
