@@ -184,7 +184,7 @@ def main():
         for material in material_layer:
             temperatures.append(material.temp)
     maxtemp = max(temperatures)  # K
-    update_heights(materials)
+    # update_heights2(materials)
     number_neutrons = c.INIT_NEUTRONS  # Start of the flux
     lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
