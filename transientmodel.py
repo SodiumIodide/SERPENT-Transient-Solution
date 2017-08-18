@@ -47,14 +47,16 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
                 half_height = height / 2
             av_height = (tot_height - height + half_height) / 100  # m
             av_pres = den * c.GRAV * av_height / 1000 * 100**3 / 1e6 + c.ATM  # MPa
+            av_height *= 100  # cm, equivalent to the height of the center of mass
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
-                                       base_height, radius, inner_radius, av_pres,
-                                       temperature))
+                                       base_height, radius, inner_radius, av_height,
+                                       av_pres, temperature))
             else:
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
-                                       base_height, radius, inner_radius, av_pres))
+                                       base_height, radius, av_height, inner_radius,
+                                       av_pres))
             mat_counter += 1
             base_height = height  # cm
         materials.append(r_list)
@@ -124,7 +126,7 @@ def update_com_accel(materials):
         # Materials/pressures assigned bottom to top, need top to bottom
         for material in reversed(material_layer):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
-                        * 1e6 * 100  # cm/s^2
+                        * 1e6 * 100 - c.DISSIPATION * material.vol_vel  # cm/s^2
             material.set_com_accel(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 
@@ -139,6 +141,19 @@ def update_heights(materials):
 def update_heights2(materials):
     '''Updates the height information of each material'''
     update_com_accel(materials)
+    # Each material needs to have its height and relative base height adjusted
+    for material_layer in materials:
+        base_height = 0.0  # cm, adjusted value
+        com_heights = np.array([])  # cm, initially empty array
+        for material in material_layer:
+            com_heights = np.append(com_heights, material.com_height)  # cm
+            top_height = 0.0  # cm, measured from base
+            inverter = 1
+            for com_height in reversed(com_heights):
+                top_height += 2 * inverter * com_height  # cm
+                inverter *= -1
+            material.update_heights(base_height, top_height)
+            base_height = material.base_height + material.height  # cm
 
 def main():
     '''Main wrapper'''
@@ -223,11 +238,6 @@ def main():
     # # Material expansion loop
     # print("Finished adding material")
     print("Now expanding system by temperature...")
-    # Store heights in two-dimensional matrix
-    heights = np.zeros([c.NUM_RADIAL, c.NUM_AXIAL])
-    for rad_ind, material_layer in enumerate(materials):
-        for ax_ind, material in enumerate(material_layer):
-            heights[rad_ind, ax_ind] = material.height
     with open("results.txt", 'a') as appfile:
         appfile.write("# Expanding material #\n")
     while keff > 0.97:
@@ -241,18 +251,12 @@ def main():
         number_fissions = sum(fissions)
         total_fissions += number_fissions
         # Begin total expansion of material
-        update_heights(materials)
+        update_heights2(materials)
         counter = 0  # Two inner loops prevent use of enumerate()
         temperatures = []  # K, reset of list
-        for rad_ind, material_layer in enumerate(materials):
-            for ax_ind, material in enumerate(material_layer):
-                # Fix heights from expansion
-                if ax_ind != 0:
-                    height_shift = heights[rad_ind, ax_ind - 1] - material.base_height  # cm
-                    material.base_height = heights[rad_ind, ax_ind - 1]  # cm
-                    material.height += height_shift  # cm
+        for material_layer in materials:
+            for material in material_layer:
                 material.update_state(fissions[counter])
-                heights[rad_ind, ax_ind] = material.height
                 # Keep checks on total height such that void data doesn't get overwritten
                 if tot_height < material.height:
                     tot_height = material.height
@@ -269,8 +273,6 @@ def main():
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        temperatures = []  # K, reset of list
-        counter = 0  # Two dimensional loops prevent use of enumerate()
         fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
