@@ -21,7 +21,7 @@ class Material():
         self.elems = elems
         self.ndens = ndens  # a/b-cm
         self.temp = temp  # K
-        self.height = height  # cm
+        self.height = height  # cm, note that this is the ABSOLUTE TOP HEIGHT of the material
         self.base_height = base_height  # cm
         self.radius = radius  # cm
         self.inner_radius = inner_radius  # cm
@@ -72,12 +72,12 @@ class Material():
         '''Change heights based on external calculations related to center of mass positions'''
         self.base_height = bheight  # cm
         self.delta_vol = (theight - bheight) * self.base - self.volume  # cm^3
-        self.append_height(theight - bheight)
+        self.append_height(theight)
 
     def append_height(self, newheight, add=False):
         '''Append a new volume after adjusting height'''
         self.height = self.height + newheight if add else newheight  # cm
-        self.volume = self.base * self.height  # cm^3
+        self.volume = self.base * (self.height - self.base_height)  # cm^3
         self.dens = self.mass / self.volume  # g/cm^3
         self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
 
@@ -150,7 +150,7 @@ class Material():
         '''Self-called method to calculate some constants after initial file run'''
         # Ideally only called ONE time after each material definition
         self.base = pi * (self.radius**2 - self.inner_radius**2)  # cm^2
-        self.volume = self.base * self.height  # cm^3
+        self.volume = self.base * (self.height - self.base_height)  # cm^3
         self.atoms = [nden * 1e24 * self.volume for nden in self.ndens]  # a
         self.mass = self.dens * self.volume  # g
 
