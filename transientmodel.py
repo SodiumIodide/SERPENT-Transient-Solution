@@ -126,7 +126,7 @@ def update_com_accel(materials):
         # Materials/pressures assigned bottom to top, need top to bottom
         for material in reversed(material_layer):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
-                        * 1e6 * 100 - c.DISSIPATION * material.vol_vel  # cm/s^2
+                        * 1e6 * 100 - c.DISSIPATION * material.com_vel  # cm/s^2
             material.set_com_accel(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 

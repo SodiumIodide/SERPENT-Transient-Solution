@@ -13,7 +13,7 @@ DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_NEUTRONS = 1e16  # Small initiating fission accident source -> Flux build-up
 INIT_HEIGHT = 53  # cm
 RAD = 15  # cm
-NUM_AXIAL = 4  # Currently limited to < 10 by Serpent definitions
+NUM_AXIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_RADIAL = 1  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
 # Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
