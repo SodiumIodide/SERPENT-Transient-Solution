@@ -153,7 +153,7 @@ def update_heights2(materials):
                 top_height += 2 * inverter * com_height  # cm
                 inverter *= -1
             material.update_heights(base_height, top_height)
-            base_height = material.base_height + material.height  # cm
+            base_height = material.height  # cm
 
 def main():
     '''Main wrapper'''
@@ -235,7 +235,7 @@ def main():
         # Do not need to recalculate masses (thus volumes) for materials at this stage
         fo.write_file(filename, materials, tot_height)
         # TODO: Change back to outfilename vvv
-        if not path.isfile(filename):
+        if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
         fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)

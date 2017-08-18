@@ -8,7 +8,7 @@ numpy for mathematical constants (if elected for use)
 #from numpy import pi as PI
 
 # Calculation parameters
-TIMESTEP_MAGNITUDE = -4
+TIMESTEP_MAGNITUDE = -3
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_NEUTRONS = 1e16  # Small initiating fission accident source -> Flux build-up
 INIT_HEIGHT = 53  # cm
