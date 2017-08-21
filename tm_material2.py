@@ -71,8 +71,8 @@ class Material():
 
     def update_mat_height(self):
         '''Change the material height'''
-        half_height = self.com_height - self.base  # cm
-        self.height = self.base + 2 * half_height  # cm
+        half_height = self.com_height - self.base_height  # cm
+        self.height = self.base_height + 2 * half_height  # cm
 
     def height_shift(self, shift):
         '''Change the positioning of each material layer'''

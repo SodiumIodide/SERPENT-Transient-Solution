@@ -129,7 +129,6 @@ def update_com_accel(materials):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
                         * 1e6 * 100 - c.DISSIPATION * material.com_vel  # cm/s^2
             material.set_com_accel(com_accel)
-            print(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 
 def update_heights(materials):
