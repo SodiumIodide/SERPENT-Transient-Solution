@@ -21,7 +21,7 @@ class Material():
         self.elems = elems
         self.ndens = ndens  # a/b-cm
         self.temp = temp  # K
-        self.height = height  # cm, note that this is the ABSOLUTE TOP HEIGHT of the material
+        self.height = height  # cm, note that this is the ABSOLUTE TOP HEIGHT of the material, from 0
         self.base_height = base_height  # cm
         self.radius = radius  # cm
         self.inner_radius = inner_radius  # cm
@@ -57,9 +57,10 @@ class Material():
     def set_com_accel(self, newcoma):
         '''Adjust center of mass acceleration'''
         self.com_accel = newcoma  # cm/s^2
-        self.update_com_height()
+        self.__update_com_height()
+        self.update_mat_height()
 
-    def update_com_height(self):
+    def __update_com_height(self):
         '''Calculate new height based on volume acceleration and time'''
         # Reliant on Newtonian kinematics equations
         com_vel_i = self.com_vel  # cm/s
@@ -67,6 +68,16 @@ class Material():
         self.com_vel = com_vel_f  # cm/s, update information for next snapshot
         self.delta_com = com_vel_i * c.DELTA_T + 1 / 2 * self.com_accel * c.DELTA_T**2  # cm
         self.com_height += self.delta_com  # cm
+
+    def update_mat_height(self):
+        '''Change the material height'''
+        half_height = self.com_height - self.base  # cm
+        self.height = self.base + 2 * half_height  # cm
+
+    def height_shift(self, shift):
+        '''Change the positioning of each material layer'''
+        self.base_height += shift  # cm
+        self.height += shift  # cm
 
     def update_heights(self, bheight, theight):
         '''Change heights based on external calculations related to center of mass positions'''

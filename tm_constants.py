@@ -8,7 +8,7 @@ numpy for mathematical constants (if elected for use)
 #from numpy import pi as PI
 
 # Calculation parameters
-TIMESTEP_MAGNITUDE = -3
+TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_NEUTRONS = 1e16  # Small initiating fission accident source -> Flux build-up
 INIT_HEIGHT = 53  # cm
@@ -21,8 +21,9 @@ THRESHOLD = 1e15  # fissions/liter
 
 # Equation of state
 GRAV = 9.80665  # m/s^2
+#GRAV = 0.0  # m/s^2
 ATM_ABS = 101325  # Pa, atmospheric value
-ATM = 0  # Pa, calculated with gauge pressures instead of absolute
+ATM = 0.0  # Pa, calculated with gauge pressures instead of absolute
 # Radius of radiolytic gas bubbles, from Forehand dissertation, 1981
 # -> Independent of pressure, temperature, surface tension, gas and fissile concentration
 RAD_GAS_BUBBLE = 5e-6 / 100  # m

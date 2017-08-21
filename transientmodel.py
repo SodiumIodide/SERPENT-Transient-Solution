@@ -47,6 +47,7 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
                 half_height = height / 2
             av_height = (tot_height - height + half_height) / 100  # m
             av_pres = den * c.GRAV * av_height / 1000 * 100**3 / 1e6 + c.ATM  # MPa
+            #av_pres = 0.0  # MPa
             com_height = tot_height - av_height * 100  # cm, equivalent to the height of the center of mass
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
@@ -128,6 +129,7 @@ def update_com_accel(materials):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
                         * 1e6 * 100 - c.DISSIPATION * material.com_vel  # cm/s^2
             material.set_com_accel(com_accel)
+            print(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 
 def update_heights(materials):
@@ -154,6 +156,20 @@ def update_heights2(materials):
                 inverter *= -1
             material.update_heights(base_height, top_height)
             base_height = material.height  # cm
+
+def update_heights3(materials):
+    '''Ensures that the materials are appropriately layered'''
+    update_com_accel(materials)
+    # Each material needs to have its height and relative base height adjusted
+    # -> from the bottom, up; shift heights for no overlap
+    # Working on the assumption that pressure acceleration is a relative
+    # acceleration value, not an absolute acceleration
+    for material_layer in materials:
+        base_height = 0.0  # cm, adjusted value by iteration
+        for material in material_layer:
+            shift = base_height - material.base_height  # cm
+            material.height_shift(shift)
+            base_height = material.base_height  # cm, update for next axial layer
 
 def main():
     '''Main wrapper'''
@@ -212,7 +228,7 @@ def main():
         number_fissions = sum(fissions)
         total_fissions += number_fissions
         # Begin total expansion of material
-        update_heights2(materials)
+        update_heights3(materials)
         counter = 0  # Two inner loops prevent use of enumerate()
         temperatures = []  # K, reset of list
         for material_layer in materials:
