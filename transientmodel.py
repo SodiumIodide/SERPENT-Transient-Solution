@@ -47,8 +47,8 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
                 half_height = height / 2
             av_height = (tot_height - height + half_height) / 100  # m
             av_pres = den * c.GRAV * av_height / 1000 * 100**3 / 1e6 + c.ATM  # MPa
-            #av_pres = 0.0  # MPa
-            com_height = tot_height - av_height * 100  # cm, equivalent to the height of the center of mass
+            # Equivalent to the height of the center of mass:
+            com_height = tot_height - av_height * 100  # cm
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
@@ -102,11 +102,9 @@ def update_vol_accel(materials):
         mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
         # Note (syntax) that atmosphere is appended, not universally added
         pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # MPa
-        # TODO: Debug this: calculation may have to do with dot product, resulting in negative matrices
-        #print(pres_vec)
-        dissipation_vec = np.array([2 * mat_area * c.DISSIPATION * m.vol_vel for m in material_layer])
+        diss_vec = np.array([2 * mat_area * c.DISSIPATION * m.vol_vel for m in material_layer])
         vol_accel_vec = 4 * 1e6 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3 \
-                        - dissipation_vec  # cm^3/s^2
+                        - diss_vec  # cm^3/s^2
         for ind, material in enumerate(material_layer):
             material.set_vol_accel(vol_accel_vec[ind])
 
@@ -168,7 +166,7 @@ def update_heights3(materials):
         for material in material_layer:
             shift = base_height - material.base_height  # cm
             material.height_shift(shift)
-            base_height = material.base_height  # cm, update for next axial layer
+            base_height = material.height  # cm, update for next axial layer
 
 def main():
     '''Main wrapper'''
@@ -249,7 +247,7 @@ def main():
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
         fo.write_file(filename, materials, tot_height)
-        # TODO: Change back to outfilename vvv
+        # NOTE: This should be "outfilename", but can be "filename" for debugging vvv
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
