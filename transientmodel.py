@@ -81,8 +81,8 @@ def calc_heights(tot_height):
 
 def calc_radii(tot_rad):
     '''Returns a list of the ranges of radii based on total'''
-    rad_diff = tot_rad / c.NUM_RADIAL  # cm
-    radii = list(map(lambda ind: ind * rad_diff, range(1, c.NUM_RADIAL + 1)))  # cm
+    rad_diff = (tot_rad - c.INNER_RAD) / c.NUM_RADIAL  # cm
+    radii = list(map(lambda ind: ind * rad_diff + c.INNER_RAD, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
 
 # NOTE: Ideally shouldn't be explicitly called independently
@@ -125,7 +125,7 @@ def update_com_accel(materials):
         # Materials/pressures assigned bottom to top, need top to bottom
         for material in reversed(material_layer):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
-                        * 1e6 * 100 - c.DISSIPATION * material.com_vel  # cm/s^2
+                        * 1e6 * 100 - c.DISSIPATION * material.com_vel - c.GRAV * 100  # cm/s^2
             material.set_com_accel(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 

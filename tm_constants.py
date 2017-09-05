@@ -8,13 +8,14 @@ numpy for mathematical constants (if elected for use)
 #from numpy import pi as PI
 
 # Calculation parameters
-TIMESTEP_MAGNITUDE = -3
+TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
-INIT_NEUTRONS = 1e16  # Small initiating fission accident source -> Flux build-up
-INIT_HEIGHT = 53  # cm
-RAD = 15  # cm
-NUM_AXIAL = 3  # Currently limited to < 10 by Serpent definitions
-NUM_RADIAL = 1  # Currently limited to < 10 by Serpent definitions
+INIT_NEUTRONS = 1e15  # Small initiating fission accident source -> Flux build-up
+INIT_HEIGHT = 41.34  # cm
+RAD = 16.3  # cm
+INNER_RAD = 0.0  # cm
+NUM_AXIAL = 5  # Currently limited to < 10 by Serpent definitions
+NUM_RADIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
 # Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
 THRESHOLD = 1e15  # fissions/liter

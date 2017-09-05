@@ -22,8 +22,8 @@ def get_transient(filename):
     Read an output file to determine the k-eff and neutron lifetime
     Returns tuple of lifetime, k-eff, and maximum k-eff
     '''
-    ltpat = re.compile(r'IMPL_PROMPT_LIFETIME\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s\S+\s\];')
-    kepat = re.compile(r'IMP_KEFF\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s(\S+)\s\];')
+    ltpat = re.compile(r'ANA_PROMPT_LIFETIME\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s\S+\s\];')
+    kepat = re.compile(r'ANA_KEFF\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s(\S+)\s\];')
     nbpat = re.compile(r'NUBAR\s+\(idx,\s\S+\s+\S+\)\s=\s\[\s+(\S+).+;')
     with open(filename, mode='r') as ofile:
         for line in ofile:
@@ -54,6 +54,8 @@ def write_file(filename, materials, tot_height):
         # Axial distributions occur on order nx, where n is the material number
         # and x is the plane number (1 for bottom and 2 for top)
         # Radial distributions read as n, where n is increasing to NUM_RADIAL
+        if c.INNER_RAD > 0.0:
+            fhan.write("surf 0 cyl 0 0 {}\n".format(c.INNER_RAD))
         for rad_ind, material_level in enumerate(materials):
             fhan.write("surf {0} cyl 0 0 ".format(rad_ind + 1))
             for mat_ind, material in enumerate(material_level):
@@ -73,6 +75,8 @@ def write_file(filename, materials, tot_height):
             fhan.write("cell 10{0} {0} void {0}\n".format(rad_ind + 1))
             if rad_ind > 0:
                 fhan.write("cell 11{0} {0} void -{1}\n".format(rad_ind + 1, rad_ind))
+            elif c.INNER_RAD > 0.0:
+                fhan.write("cell 11{0} {0} void -0\n".format(rad_ind + 1))
             # Void sub-axials are marked with 12n, where n is the radial number
             for mat_ind, material in enumerate(material_level):
                 if mat_ind == 0:
@@ -81,15 +85,21 @@ def write_file(filename, materials, tot_height):
                            .format(material.matnum, rad_ind + 1, mat_ind, mat_ind + 1))
                 if rad_ind > 0:
                     fhan.write(" {}".format(rad_ind))
+                elif c.INNER_RAD > 0.0:
+                    fhan.write(" 0")
                 fhan.write("\n")
             # Void super-axials are marked with 13n, where n is the radial number
             fhan.write("cell 13{0} {0} void {0}{1}\n".format(rad_ind + 1, c.NUM_AXIAL))
             fhan.write("\n")
         # Global universe cells, marked with 100n, where n is the radial number
+        if c.INNER_RAD > 0.0:
+            fhan.write("cell 1000 0 void 1001 -1002 -0\n")
         for radial_num in range(1, c.NUM_RADIAL + 1):
             fhan.write("cell 100{0} 0 fill {0} 1001 -1002 -{0}".format(radial_num))
             if radial_num > 1:
                 fhan.write(" {}".format(radial_num - 1))
+            elif c.INNER_RAD > 0.0:
+                fhan.write(" 0")
             fhan.write("\n")
         # Now mark global outside, still of form 100n, but with n > radial number
         fhan.write("cell 100{} 0 outside -1001\n".format(c.NUM_RADIAL + 1))
