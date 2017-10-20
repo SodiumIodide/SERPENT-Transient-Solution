@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# transientmodel.py
 
 '''
 A transient model for critical solution systems.
@@ -19,8 +21,7 @@ from os import system, path
 import numpy as np
 
 # Shared
-from tm_material2 import Material  # Requires CoolProp
-from tm_volaccel import volume_mult_matrix
+from tm_material import Material  # Requires CoolProp
 import tm_constants as c
 import tm_fileops as fo
 
@@ -85,29 +86,6 @@ def calc_radii(tot_rad):
     radii = list(map(lambda ind: ind * rad_diff + c.INNER_RAD, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
 
-# NOTE: Ideally shouldn't be explicitly called independently
-def update_vol_accel(materials):
-    '''
-    Updates volume acceleration in each material
-    Called by the update_heights() function, not explicitly calculated independently
-    '''
-    # Materials are arranged by radius, then by height
-    # Annular materials are subject to the same pressure fluctuations
-    # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
-    # -> axially, along the axis of possible expansion (not into walls)
-    for material_layer in materials:
-        # All materials in each layer should be of the same mass and base area
-        mat_mass = material_layer[0].mass / 1000  # kg
-        mat_area = material_layer[0].base / 100**2  # m^2
-        mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
-        # Note (syntax) that atmosphere is appended, not universally added
-        pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # MPa
-        diss_vec = np.array([2 * mat_area * c.DISSIPATION * m.vol_vel for m in material_layer])
-        vol_accel_vec = 4 * 1e6 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3 \
-                        - diss_vec  # cm^3/s^2
-        for ind, material in enumerate(material_layer):
-            material.set_vol_accel(vol_accel_vec[ind])
-
 def update_com_accel(materials):
     '''
     Updates center of mass acceleration in each material
@@ -117,7 +95,9 @@ def update_com_accel(materials):
     # Annular materials are subject to the same pressure fluctuations
     # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
     # -> axially, along the axis of possible expansion (not into walls)
-    for material_layer in materials:
+    for ind, material_layer in enumerate(materials):
+        # Dissipation effects on the fluid regions next to the wall
+        dissipate = 1 if ind == (c.NUM_RADIAL - 1) else 0
         # All materials in each layer should be of the same mass and base area
         mat_mass = material_layer[0].mass / 1000  # kg
         mat_area = material_layer[0].base / 100**2  # m^2
@@ -125,34 +105,10 @@ def update_com_accel(materials):
         # Materials/pressures assigned bottom to top, need top to bottom
         for material in reversed(material_layer):
             com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
-                        * 1e6 * 100 - c.DISSIPATION * material.com_vel - c.GRAV * 100  # cm/s^2
+                        * 1e6 * 100 - c.DISSIPATION * material.com_vel * dissipate \
+                        - c.GRAV * 100  # cm/s^2
             material.set_com_accel(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
-
-def update_heights(materials):
-    '''Updates the height information of each material'''
-    # Mostly here to decrease code bloat and containerize calculations
-    update_vol_accel(materials)
-    for material_layer in materials:
-        for material in material_layer:
-            material.update_height(c.DELTA_T)
-
-def update_heights2(materials):
-    '''Updates the height information of each material'''
-    update_com_accel(materials)
-    # Each material needs to have its height and relative base height adjusted
-    for material_layer in materials:
-        base_height = 0.0  # cm, adjusted value by iteration
-        com_heights = np.array([])  # cm, initially empty array
-        for material in material_layer:
-            com_heights = np.append(com_heights, material.com_height)  # cm
-            top_height = 0.0  # cm, measured from base
-            inverter = 1
-            for com_height in reversed(com_heights):
-                top_height += 2 * inverter * com_height  # cm
-                inverter *= -1
-            material.update_heights(base_height, top_height)
-            base_height = material.height  # cm
 
 def update_heights3(materials):
     '''Ensures that the materials are appropriately layered'''
@@ -214,7 +170,7 @@ def main():
     print("Now expanding system by temperature...")
     with open("results.txt", 'a') as appfile:
         appfile.write("# Expanding material #\n")
-    while keff > 0.97:
+    while keff > c.SUBCRITICAL_LIMIT:
         # Proceed in time
         timer += c.DELTA_T  # s
         # Read previous output file for information and calculate new changes
@@ -247,7 +203,7 @@ def main():
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
         fo.write_file(filename, materials, tot_height)
-        # NOTE: This should be "outfilename", but can be "filename" for debugging vvv
+        # NOTE: This should be "outfilename", but can be "filename" for debugging
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
@@ -261,7 +217,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    # except ValueError:
-        # pass
     finally:
         print("\nProgram terminated\n")

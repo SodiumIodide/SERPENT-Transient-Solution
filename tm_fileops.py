@@ -1,4 +1,13 @@
-'''Import only module. Contains operations on input and output files.'''
+# -*- coding: utf-8 -*-
+# tm_fileops.py
+
+'''
+Import only module. Contains operations on input and output files from SERPENT,
+primarily writing input files and reading detector output files and parameter output
+files.
+
+Also contains functionality for writing overall results file.
+'''
 
 import re
 import tm_constants as c
