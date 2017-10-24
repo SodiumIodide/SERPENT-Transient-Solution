@@ -97,7 +97,7 @@ def update_com_accel(materials):
     # -> axially, along the axis of possible expansion (not into walls)
     for ind, material_layer in enumerate(materials):
         # Dissipation effects on the fluid regions next to the wall
-        dissipate = 1 if ind == (c.NUM_RADIAL - 1) else 0
+        dissipate = 1 if ind == (c.NUM_RADIAL - 1) or (ind == 0 and c.INNER_RAD > 0.0) else 0
         # All materials in each layer should be of the same mass and base area
         mat_mass = material_layer[0].mass / 1000  # kg
         mat_area = material_layer[0].base / 100**2  # m^2
@@ -110,7 +110,7 @@ def update_com_accel(materials):
             material.set_com_accel(com_accel)
             top_pressure = material.bot_pressure  # MPa, gauge
 
-def update_heights3(materials):
+def update_heights(materials):
     '''Ensures that the materials are appropriately layered'''
     update_com_accel(materials)
     # Each material needs to have its height and relative base height adjusted
@@ -181,7 +181,8 @@ def main():
         number_fissions = sum(fissions)
         total_fissions += number_fissions
         # Begin total expansion of material
-        update_heights3(materials)
+        if c.EXPANSION:
+            update_heights(materials)
         counter = 0  # Two inner loops prevent use of enumerate()
         temperatures = []  # K, reset of list
         for material_layer in materials:
@@ -196,9 +197,8 @@ def main():
                 temperatures.append(material.temp)  # K
                 counter += 1
         maxtemp = max(temperatures)  # K
-        filename = re.sub(r'\d', r'', filename.rstrip(".inp")) + \
-                   re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
-                   ".inp"
+        timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
+        filename = re.sub(r'\d', r'', filename.rstrip(".inp")) + timer_string + ".inp"
         outfilename = filename + "_res.m"
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
@@ -207,7 +207,8 @@ def main():
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax, tot_height)
+        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff,
+                  keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
         print("Maximum k-eff: {}".format(keffmax))

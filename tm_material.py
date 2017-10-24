@@ -35,7 +35,6 @@ class Material():
         self.base = 0.0  # cm^2, placeholder until calculated
         self.kappa = 0.0  # 1/Pa, isothermal compressibility, placeholder until needed
         self.beta = 0.0  # 1/K, isobaric compressibility, placeholder until needed
-        self.delta_temp = 0.0  # K, placeholder until required for expansion
         self.delta_temp = 0.0  # K, initially zero upon definition
         self.delta_pres = 0.0  # Pa, initially zero upon definition
         self.atoms = [0.0] * len(ndens)  # _, placeholder until calculated
@@ -51,7 +50,7 @@ class Material():
         self.delta_vol = 0.0  # cm^3, placeholder, no initial delta
         self.xs_tag = "03c"
         self.sab_tag = "00t"
-        self.gas_production_flag = False  # Once radiolytic gas is produced, produce it
+        self.gas_production_flag = False  # Once radiolytic gas is produced, keep producing it
         if temp != 300:  # K
             self.__update_xs_tag()
             self.__update_sab_tag()
@@ -104,11 +103,12 @@ class Material():
         # Constant volume specific heat
         spec_heat = PropsSI('O', 'T', self.temp, 'P', self.av_pressure + c.ATM_ABS, 'WATER') \
                     * 1e-6  # MJ/kg-K
-        self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-19 - self.beta \
-                          / self.kappa * self.delta_vol / 100**3) / (self.mass / 1000)  # K
-        self.temp += self.delta_temp  # K
-        self.__update_xs_tag()
-        self.__update_sab_tag()
+        if c.TEMPERATURE:
+            self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-19 - self.beta \
+                              / self.kappa * self.delta_vol / 100**3) / (self.mass / 1000)  # K
+            self.temp += self.delta_temp  # K
+            self.__update_xs_tag()
+            self.__update_sab_tag()
         self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
                           / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # MPa
         self.av_pressure += self.delta_pres  # MPa

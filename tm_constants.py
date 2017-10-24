@@ -10,6 +10,8 @@ numpy for mathematical constants (if elected for use)
 '''
 
 # Calculation parameters
+EXPANSION = False  # Allow for material to be expanded
+TEMPERATURE = True  # Allow for temperature to be increased (not static)
 TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_HEIGHT = 41.34  # cm
