@@ -143,9 +143,9 @@ def write_file(filename, materials, tot_height):
             for material in material_level:
                 fhan.write("det {0} dc {0} dr -6 void dt 3 100\n".format(material.matnum))
 
-def record(time, numfissions, totfissions, maxt, lifetime, keff, keffmax):
+def record(time, numfissions, totfissions, maxt, lifetime, keff, keffmax, maxheight):
     '''Record current step to a results file'''
     with open("results.txt", 'a') as appfile:
-        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}\n"
+        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}\n"
                       .format(round(time, abs(c.TIMESTEP_MAGNITUDE) + 1), numfissions,
-                              totfissions, maxt, lifetime, keff, keffmax))
+                              totfissions, maxt, lifetime, keff, keffmax, maxheight))

@@ -162,14 +162,14 @@ def main():
     # Start results file
     with open('results.txt', 'w') as resfile:
         resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature, " + \
-                      "Neutron Lifetime(s), k-eff, k-eff+2sigma\n")
-    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
+                      "Neutron Lifetime (s), k-eff, k-eff+2sigma, Max Height (cm)\n")
+    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax, tot_height)
     # Material addition loop
     print("Beginning main calculation...")
     # # Material expansion loop
     print("Now expanding system by temperature...")
-    with open("results.txt", 'a') as appfile:
-        appfile.write("# Expanding material #\n")
+    # with open("results.txt", 'a') as appfile:
+        # appfile.write("# Expanding material #\n")
     while keff > c.SUBCRITICAL_LIMIT:
         # Proceed in time
         timer += c.DELTA_T  # s
@@ -207,7 +207,7 @@ def main():
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax)
+        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
         print("Maximum k-eff: {}".format(keffmax))
