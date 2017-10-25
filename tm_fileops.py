@@ -111,8 +111,8 @@ def write_file(filename, materials, tot_height):
                 fhan.write(" 0")
             fhan.write("\n")
         # Now mark global outside, still of form 100n, but with n > radial number
-        fhan.write("cell 100{} 0 outside -1001\n".format(c.NUM_RADIAL + 1))
-        fhan.write("cell 100{} 0 outside 1002\n".format(c.NUM_RADIAL + 2))
+        fhan.write("cell 100{0} 0 outside -1001 -{1}\n".format(c.NUM_RADIAL + 1, c.NUM_RADIAL))
+        fhan.write("cell 100{0} 0 outside 1002 -{1}\n".format(c.NUM_RADIAL + 2, c.NUM_RADIAL))
         fhan.write("cell 100{0} 0 outside {1}\n".format(c.NUM_RADIAL + 3, c.NUM_RADIAL))
         fhan.write("\n")
         # Thermal scattering S(a,b)
@@ -143,9 +143,9 @@ def write_file(filename, materials, tot_height):
             for material in material_level:
                 fhan.write("det {0} dc {0} dr -6 void dt 3 100\n".format(material.matnum))
 
-def record(time, numfissions, totfissions, maxt, lifetime, keff, keffmax, maxheight):
+def record(time, numfissions, totfissions, maxt, lifetime, nubar, keff, keffmax, maxheight):
     '''Record current step to a results file'''
     with open("results.txt", 'a') as appfile:
-        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}\n"
+        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}, {8}\n"
                       .format(round(time, abs(c.TIMESTEP_MAGNITUDE) + 1), numfissions,
-                              totfissions, maxt, lifetime, keff, keffmax, maxheight))
+                              totfissions, maxt, nubar, lifetime, keff, keffmax, maxheight))

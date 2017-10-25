@@ -16,8 +16,8 @@ CoolProp for water properties (assuming aqueous mixture is approximated by water
 '''
 
 # External
-import re
 from os import system, path
+import re
 import numpy as np
 
 # Shared
@@ -162,8 +162,9 @@ def main():
     # Start results file
     with open('results.txt', 'w') as resfile:
         resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature, " + \
-                      "Neutron Lifetime (s), k-eff, k-eff+2sigma, Max Height (cm)\n")
-    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff, keffmax, tot_height)
+                      "Neutron Lifetime (s), nu-bar, k-eff, k-eff+2sigma, Max Height (cm)\n")
+    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar,
+              keff, keffmax, tot_height)
     # Material addition loop
     print("Beginning main calculation...")
     # # Material expansion loop
@@ -198,7 +199,8 @@ def main():
                 counter += 1
         maxtemp = max(temperatures)  # K
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
-        filename = re.sub(r'\d', r'', filename.rstrip(".inp")) + timer_string + ".inp"
+        filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).strip('.') \
+                   + timer_string + ".inp"
         outfilename = filename + "_res.m"
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
@@ -207,8 +209,8 @@ def main():
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, keff,
-                  keffmax, tot_height)
+        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar,
+                  keff, keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
         print("Maximum k-eff: {}".format(keffmax))

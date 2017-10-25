@@ -10,15 +10,15 @@ numpy for mathematical constants (if elected for use)
 '''
 
 # Calculation parameters
-EXPANSION = False  # Allow for material to be expanded
-TEMPERATURE = True  # Allow for temperature to be increased (not static)
+EXPANSION = True  # Allow for material to be expanded
+TEMPERATURE = False  # Allow for temperature to be increased
 TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_HEIGHT = 41.34  # cm
 RAD = 16.3  # cm
 INNER_RAD = 0.0  # cm
 NUM_AXIAL = 5  # Currently limited to < 10 by Serpent definitions
-NUM_RADIAL = 5  # Currently limited to < 10 by Serpent definitions
+NUM_RADIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
 # Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
 THRESHOLD = 1.5e15  # fissions/liter
