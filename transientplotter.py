@@ -15,13 +15,12 @@ def main():
     '''Main driver'''
     filename = getfile()
 
-
 def getfile():
     '''Return file name to read'''
     # A default name is assumed, which is the standard name of output files
     chosen_name = DEFAULT_NAME
     # txt files and csv files are prioritized
-    filenames = [f for f in listdir('.') if isfile(f) and (f.endswith('.txt') or f.endswith('.csv'))]
+    filenames = [f for f in listdir('.') if f.endswith('.txt') or f.endswith('.csv')]
     if filenames:
         print("Select filename to use")
     else:

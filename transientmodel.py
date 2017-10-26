@@ -65,9 +65,10 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
         inner_radius = radius  # cm
     return materials
 
-def propagate_neutrons(k_eff, lifetime, neutrons):
+def propagate_neutrons(k_eff, lifetime, beta_eff, neutrons):
     '''Propagate the number of neutrons over delta-t'''
-    return neutrons * np.exp((k_eff - 1)/lifetime * c.DELTA_T)
+    reactivity = (k_eff - 1)/k_eff
+    return neutrons * np.exp((reactivity - beta_eff)/lifetime * c.DELTA_T)
 
 # This function is largely present for refactoring purposes
 def increase_height(height, incr):
@@ -155,7 +156,7 @@ def main():
     maxtemp = max(temperatures)  # K
     # update_heights2(materials)
     number_neutrons = c.INIT_NEUTRONS  # Start of the flux
-    lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)  # s, _, _, n/fis
+    lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
     number_fissions = number_neutrons / nubar
     total_fissions = number_fissions
@@ -176,7 +177,7 @@ def main():
         timer += c.DELTA_T  # s
         # Read previous output file for information and calculate new changes
         fission_profile = fo.count_fissions(detfilename)
-        number_neutrons = propagate_neutrons(keff, lifetime, number_neutrons)
+        number_neutrons = propagate_neutrons(keff, lifetime, beff, number_neutrons)
         # Correlation between flux profile and fission density
         fissions = [frac * number_neutrons / nubar for frac in fission_profile]
         number_fissions = sum(fissions)
@@ -199,7 +200,7 @@ def main():
                 counter += 1
         maxtemp = max(temperatures)  # K
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
-        filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).strip('.') \
+        filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).replace('.', '') \
                    + timer_string + ".inp"
         outfilename = filename + "_res.m"
         detfilename = filename + "_det0.m"
@@ -208,7 +209,7 @@ def main():
         # NOTE: This should be "outfilename", but can be "filename" for debugging
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
-        lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
+        lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)
         fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar,
                   keff, keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))

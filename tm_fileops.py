@@ -28,12 +28,13 @@ def count_fissions(filename):
 
 def get_transient(filename):
     '''
-    Read an output file to determine the k-eff and neutron lifetime
-    Returns tuple of lifetime, k-eff, and maximum k-eff
+    Read an output file to determine the transient point-reactor kinetics parameters
+    Returns tuple of lifetime, k-eff, maximum k-eff, nu-bar, and beta-eff
     '''
     ltpat = re.compile(r'ANA_PROMPT_LIFETIME\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s\S+\s\];')
     kepat = re.compile(r'ANA_KEFF\s+\(idx,\s\[1:\s+2\]\)\s=\s\[\s+(\S+)\s(\S+)\s\];')
     nbpat = re.compile(r'NUBAR\s+\(idx,\s\S+\s+\S+\)\s=\s\[\s+(\S+).+;')
+    bepat = re.compile(r'BETA_EFF\s+\(idx,\s\S+\s+\S+\)\s=\s\[\s+(\S+).+;')
     with open(filename, mode='r') as ofile:
         for line in ofile:
             if re.match(ltpat, line):
@@ -46,7 +47,10 @@ def get_transient(filename):
             if re.match(nbpat, line):
                 matches = re.findall(nbpat, line)
                 nubar = float(matches[0])  # n/fis
-    return (lifetime, keff, maxkeff, nubar)  # s, _, _, n/fis
+            if re.match(bepat, line):
+                matches = re.findall(bepat, line)
+                beff = float(matches[0])
+    return (lifetime, keff, maxkeff, nubar, beff)  # s, _, _, n/fis
 
 def write_file(filename, materials, tot_height):
     '''Function to create the series of input files'''
@@ -148,4 +152,4 @@ def record(time, numfissions, totfissions, maxt, lifetime, nubar, keff, keffmax,
     with open("results.txt", 'a') as appfile:
         appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}, {8}\n"
                       .format(round(time, abs(c.TIMESTEP_MAGNITUDE) + 1), numfissions,
-                              totfissions, maxt, nubar, lifetime, keff, keffmax, maxheight))
+                              totfissions, maxt, lifetime, nubar, keff, keffmax, maxheight))
