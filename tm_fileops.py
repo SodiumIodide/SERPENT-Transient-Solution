@@ -56,7 +56,7 @@ def write_file(filename, materials, tot_height):
     '''Function to create the series of input files'''
     with open(filename, mode='w', newline='\n') as fhan:
         fhan.write("% Serpent Input File\n")
-        fhan.write("set title \"solutionmodel\"\n\n")
+        fhan.write("set title \"{}\"\n\n".format(filename[:filename.rfind(".inp")]))
         # Material data
         fhan.write("\n% Materials\n")
         for material_level in materials:
