@@ -130,7 +130,9 @@ def main():
     print("\nWelcome to the Transient Solution Modeling software.")
     print("Developed by Corey Skinner for the purposes of a revision of")
     print("DOE-HDBK-3010, Chapter 6: Accidental Criticality using the Python 3.6")
-    print("programming language in 2017.")
+    print("programming language in 2017. Supplementary work for a Master's Thesis,")
+    print("\"Evaluation of Energy Released in Nuclear Criticality Excursions in")
+    print("Process Solutions\"")
     print("\nPlease enter a filename (no extension necessary):")
     filename = input(">>> ")
     if not filename.endswith(".inp"):
