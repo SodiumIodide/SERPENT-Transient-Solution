@@ -195,8 +195,11 @@ class Material():
         # Material representation, overload built-in string definition
         #round_value = 300  # K
         #rounded_temp = int(round_value * round(self.temp / round_value))  # K
-        ret = "mat solution{0} sum moder lwtr{0} 1001 tmp {1}".format(self.matnum, self.temp)
-        ret += " rgb {0} {1} {2}\n".format(self.red, self.green, self.blue)
+        ret = "mat solution{0} sum".format(self.matnum)
+        ret += " moder lwtr{0} 1001".format(self.matnum)
+        ret += " tmp {}".format(self.temp)
+        #ret += " rgb {0} {1} {2}".format(self.red, self.green, self.blue)
+        ret += "\n"
         template = "{0}.{1} {2}\n"
         for ind, elem in enumerate(self.elems):
             ret += template.format(elem, self.xs_tag, self.ndens[ind])

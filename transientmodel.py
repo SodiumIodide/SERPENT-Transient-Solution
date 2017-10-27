@@ -211,14 +211,14 @@ def main():
         number_fissions = power * c.DELTA_T  # fissions
         fissions = [frac * number_fissions for frac in fission_profile]  # fissions
         total_fissions += number_fissions  # fissions
-        # Begin total expansion of material
-        if c.EXPANSION:
-            update_heights(materials)
         # Assume that initiating fission profile does not change from the initial calculation
         if initial:
             initial = False  # Only calculate one time
             integrated_dist = [frac * integrated_fissions for frac in fission_profile]  # fissions
             _, _ = update_material_states(materials, integrated_dist, tot_height)  # cm, [K]
+        # Begin total expansion of material
+        if c.EXPANSION:
+            update_heights(materials)
         tot_height, temperatures = update_material_states(materials, fissions,
                                                           tot_height)  # cm, [K]
         maxtemp = max(temperatures)  # K
