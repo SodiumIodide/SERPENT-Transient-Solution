@@ -8,12 +8,31 @@ Python script to plot the output files based on selection.
 
 from os import listdir
 import sys
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 DEFAULT_NAME = 'results.txt'
 
 def main():
     '''Main driver'''
     filename = getfile()
+    results_frame = pd.read_csv(filename)
+    selectdata(results_frame)
+
+def selectdata(frame):
+    '''Return data option'''
+    print("Select data to plot:")
+    for ind, column in enumerate(frame):
+        print(f"{ind + 1}] {column.title()}")
+    response = input(">>> ")
+    try:
+        value = int(response) - 1
+    except:
+        pass
+    print(len(frame))
+    result = 0
+    return result
 
 def getfile():
     '''Return file name to read'''

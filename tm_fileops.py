@@ -135,7 +135,7 @@ def write_file(filename, materials, tot_height):
                    .format(c.NUM_PARTICLES, c.NUM_CYCLES, c.NUM_DROPS))
         # Include unresolved resonance probability tables
         fhan.write("\n% Unresolved resonance probability calculations\n")
-        fhan.write("set ures 1\n\n")
+        fhan.write("set ures 0\n\n")
         # Geometry plot
         fhan.write("\n% Geometry plot\n")
         fhan.write("plot 1 1000 1000 0 -{0} {0} -1 {1}\n\n".format(c.RAD + 1, tot_height + 1))
@@ -147,9 +147,9 @@ def write_file(filename, materials, tot_height):
             for material in material_level:
                 fhan.write("det {0} dc {0} dr -6 void dt 3 100\n".format(material.matnum))
 
-def record(time, numfissions, totfissions, maxt, lifetime, nubar, keff, keffmax, maxheight):
+def record(time, numfissions, totfissions, maxt, lifetime, nubar, beff, keff, keffmax, maxheight):
     '''Record current step to a results file'''
     with open("results.txt", 'a') as appfile:
-        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}, {8}\n"
+        appfile.write("{0}, {1:E}, {2:E}, {3}, {4}, {5}, {6}, {7}, {8}, {9}\n"
                       .format(round(time, abs(c.TIMESTEP_MAGNITUDE) + 1), numfissions,
-                              totfissions, maxt, lifetime, nubar, keff, keffmax, maxheight))
+                              totfissions, maxt, lifetime, nubar, beff, keff, keffmax, maxheight))

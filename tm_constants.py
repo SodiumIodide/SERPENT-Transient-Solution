@@ -6,13 +6,15 @@ Import only module. Contains constants for the Python calculations of solution
 criticality excursions.
 
 Dependencies:
-numpy for mathematical constants (if elected for use)
+numpy for mathematical constants (if elected for use) and for color distribution
 '''
+
+import numpy as np
 
 # Calculation parameters
 EXPANSION = True  # Allow for material to be expanded
 TEMPERATURE = True  # Allow for temperature to be increased
-TIMESTEP_MAGNITUDE = -3
+TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 INIT_HEIGHT = 41.34  # cm
 RAD = 16.3  # cm
@@ -73,3 +75,8 @@ XS_TEMP = {
     1500: "15c",
     1800: "18c"
 }
+
+# Geometry plotter colors
+HUE = np.linspace(0, 360, NUM_MATERIALS)  # degrees, uniformly spaced
+SATURATION = 1
+LIGHTNESS = 0.5

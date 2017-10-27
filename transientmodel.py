@@ -67,8 +67,8 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
 
 def propagate_neutrons(k_eff, lifetime, beta_eff, neutrons):
     '''Propagate the number of neutrons over delta-t'''
-    reactivity = (k_eff - 1)/k_eff
-    return neutrons * np.exp((reactivity - beta_eff)/lifetime * c.DELTA_T)
+    reactivity = (k_eff - 1) / k_eff
+    return neutrons * np.exp((reactivity - beta_eff) / lifetime * c.DELTA_T)
 
 # This function is largely present for refactoring purposes
 def increase_height(height, incr):
@@ -156,7 +156,6 @@ def main():
         for material in material_layer:
             temperatures.append(material.temp)
     maxtemp = max(temperatures)  # K
-    # update_heights2(materials)
     number_neutrons = c.INIT_NEUTRONS  # Start of the flux
     lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
@@ -165,15 +164,13 @@ def main():
     # Start results file
     with open('results.txt', 'w') as resfile:
         resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature, " + \
-                      "Neutron Lifetime (s), nu-bar, k-eff, k-eff+2sigma, Max Height (cm)\n")
-    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar,
+                      "Neutron Lifetime (s), nu-bar, b-eff, k-eff, k-eff+2sigma, Max Height (cm)\n")
+    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar, beff,
               keff, keffmax, tot_height)
     # Material addition loop
     print("Beginning main calculation...")
     # # Material expansion loop
     print("Now expanding system by temperature...")
-    # with open("results.txt", 'a') as appfile:
-        # appfile.write("# Expanding material #\n")
     while keff > c.SUBCRITICAL_LIMIT:
         # Proceed in time
         timer += c.DELTA_T  # s
@@ -212,7 +209,7 @@ def main():
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar,
+        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar, beff,
                   keff, keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
