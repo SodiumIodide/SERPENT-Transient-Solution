@@ -24,7 +24,7 @@ NUM_RADIAL = 3  # Currently limited to < 10 by Serpent definitions
 NUM_MATERIALS = NUM_AXIAL * NUM_RADIAL  # Equivalent to the number of regions in the model
 # Calculated as a threshold value, 1e15 fissions per liter before radiolytic nucleation
 THRESHOLD = 1.5e15  # fissions/liter
-SUBCRITICAL_LIMIT = 0.97  # Limit for k_eff at which the system is subcritical
+SUBCRITICAL_LIMIT = 0.98  # Limit for k_eff at which the system is subcritical
 
 # Equation of state
 INIT_POWER = 1e18  # fis/s, small initiating fission accident source -> Flux build-up

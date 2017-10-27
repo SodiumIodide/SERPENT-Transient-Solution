@@ -79,7 +79,7 @@ def energy_dep_init(k_eff, lifetime, beta_eff):
     # Assuming an initiating accident of 1 fission per second at time t=0
     # Note: np.log() is the natural logarithm
     time = np.log(c.INIT_POWER / 1) * period  # s
-    return (period * (np.exp(time / period) - 1) * 1, time)  # fissions, s
+    return period * (np.exp(time / period) - 1) * 1  # fissions
 
 # This function is largely present for refactoring purposes
 def increase_height(height, incr):
@@ -136,22 +136,24 @@ def update_heights(materials):
             material.height_shift(shift)
             base_height = material.height  # cm, update for next axial layer
 
-def update_material_states(materials, fissions, tot_height):
+def update_material_states(materials, fissions, tot_height, initial=False):
     '''Updates the state of all materials in profile'''
     counter = 0  # Two inner loops prevent use of enumerate()
-    temperatures = []  # K, reset of list
+    temperatures = []  # K
+    pressures = []  # MPa
     for material_layer in materials:
         # Pressure goes from top down, so materials reversed
         top_pres = c.ATM  # MPa, gauge, changes by iteration
         for material in reversed(material_layer):
-            material.update_state([fis for fis in reversed(fissions)][counter], top_pres)
+            material.update_state([fis for fis in reversed(fissions)][counter], top_pres, initial)
             top_pres = material.bot_pressure  # MPa, gauge
             # Keep checks on total height such that void data doesn't get overwritten
             if tot_height < material.height:
                 tot_height = material.height  # cm
             temperatures.append(material.temp)  # K
+            pressures.append(material.av_pressure)  # MPa
             counter += 1
-    return tot_height, temperatures  # cm, [K]
+    return tot_height, temperatures, pressures  # cm, [K]
 
 def main():
     '''Main wrapper'''
@@ -180,22 +182,26 @@ def main():
     if not path.isfile(outfilename):
         system("bash -c \"sss {}\"".format(filename))
     temperatures = []  # K
+    pressures = []  # MPa
     for material_layer in materials:
         for material in material_layer:
-            temperatures.append(material.temp)
+            temperatures.append(material.temp)  # K
+            pressures.append(material.av_pressure)  # MPa
     maxtemp = max(temperatures)  # K
+    maxpres = max(pressures)  # MPa
     power = c.INIT_POWER  # Start of the flux
     lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
-    integrated_fissions, init_time = energy_dep_init(keff, lifetime, beff)  # fissions
+    integrated_fissions = energy_dep_init(keff, lifetime, beff)  # fissions
     total_fissions = integrated_fissions  # fissions
     number_fissions = power * c.DELTA_T  # fissions
     # Start results file
     with open('results.txt', 'w') as resfile:
-        resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature, " + \
-                      "Neutron Lifetime (s), nu-bar, b-eff, k-eff, k-eff+2sigma, Max Height (cm)\n")
-    fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar, beff,
-              keff, keffmax, tot_height)
+        resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature (K), " + \
+                      "Max Pressure (bar), Neutron Lifetime (s), nu-bar, b-eff, k-eff, " + \
+                      "k-eff+2sigma, Max Height (cm)\n")
+    fo.record(timer, number_fissions, total_fissions, maxtemp, maxpres * 10, lifetime,
+              nubar, beff, keff, keffmax, tot_height)
     initial = True  # Flag to calculate integrated energy deposition with initial profile
     # Material addition loop
     print("Beginning main calculation...")
@@ -215,12 +221,12 @@ def main():
         if initial:
             initial = False  # Only calculate one time
             integrated_dist = [frac * integrated_fissions for frac in fission_profile]  # fissions
-            _, _ = update_material_states(materials, integrated_dist, tot_height)  # cm, [K]
+            _, _, _ = update_material_states(materials, integrated_dist, tot_height, initial)  # cm, [K]
         # Begin total expansion of material
         if c.EXPANSION:
             update_heights(materials)
-        tot_height, temperatures = update_material_states(materials, fissions,
-                                                          tot_height)  # cm, [K]
+        tot_height, temperatures, pressures = update_material_states(materials, fissions,
+                                                                     tot_height)  # cm, [K]
         maxtemp = max(temperatures)  # K
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
         filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).replace('.', '') \
@@ -229,12 +235,12 @@ def main():
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
         fo.write_file(filename, materials, tot_height)
-        # NOTE: This should be "outfilename", but can be "filename" for debugging
+        # NOTE: This should be "outfilename", but can be "filename" for debugging purposes
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)
-        fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar, beff,
-                  keff, keffmax, tot_height)
+        fo.record(timer, number_fissions, total_fissions, maxtemp, maxpres * 10, lifetime,
+                  nubar, beff, keff, keffmax, tot_height)
         print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
         print("Current k-eff: {}".format(keff))
         print("Maximum k-eff: {}".format(keffmax))

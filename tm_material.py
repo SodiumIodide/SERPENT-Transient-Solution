@@ -51,11 +51,6 @@ class Material():
         self.xs_tag = "03c"
         self.sab_tag = "00t"
         self.gas_production_flag = False  # Once radiolytic gas is produced, keep producing it
-        # Color parameters
-        self.hue = c.HUE[matnum - 1]
-        self.sat = c.SATURATION
-        self.light = c.LIGHTNESS
-        self.red, self.green, self.blue = self.hsl_to_rgb(self.hue, self.sat, self.light)
         if temp != 300:  # K
             self.__update_xs_tag()
             self.__update_sab_tag()
@@ -87,7 +82,7 @@ class Material():
         self.dens = self.mass / self.volume  # g/cm^3
         self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
 
-    def update_state(self, fissions, top_pres):
+    def update_state(self, fissions, top_pres, initial=False):
         '''Self-regulate the expansion state of the material'''
         # Material constants are assumed to closely match those of water for an
         # aqueous solution
@@ -114,30 +109,13 @@ class Material():
             self.temp += self.delta_temp  # K
             self.__update_xs_tag()
             self.__update_sab_tag()
-        self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
-                          / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # MPa
-        self.av_pressure += self.delta_pres  # MPa
-        self.__calc_bottom_pressure(top_pres)
-
-    # Method for color conversion to keep geometry plotter in uniform color format
-    def hsl_to_rgb(self, hue, sat, light):
-        '''Convert a hue, saturation, lightness value to red, green, blue value'''
-        const = (1 - abs(2 * light - 1)) * sat
-        alt = const * (1 - abs(hue / 60 % 2 - 1))
-        modifier = light - const / 2
-        if hue < 60:
-            r_prime, g_prime, b_prime = (const, alt, 0)
-        elif hue < 120:
-            r_prime, g_prime, b_prime = (alt, const, 0)
-        elif hue < 180:
-            r_prime, g_prime, b_prime = (0, const, alt)
-        elif hue < 240:
-            r_prime, g_prime, b_prime = (0, alt, const)
-        elif hue < 300:
-            r_prime, g_prime, b_prime = (alt, 0, const)
-        else:
-            r_prime, g_prime, b_prime = (const, 0, alt)
-        return tuple(map(lambda color: int((color + modifier) * 255), (r_prime, g_prime, b_prime)))
+        # Don't account delta pressures into the back-end excursion energy calculation
+        # This can have negative impacts on the COM acceleration
+        if not initial:
+            self.delta_pres = self.beta / self.kappa * self.delta_temp - 1 \
+                              / (self.kappa * self.volume / 100**3) * self.delta_vol / 100**3  # MPa
+            self.av_pressure += self.delta_pres  # MPa
+            self.__calc_bottom_pressure(top_pres)
 
     def __update_com_height(self):
         '''Calculate new height based on volume acceleration and time'''
@@ -195,11 +173,7 @@ class Material():
         # Material representation, overload built-in string definition
         #round_value = 300  # K
         #rounded_temp = int(round_value * round(self.temp / round_value))  # K
-        ret = "mat solution{0} sum".format(self.matnum)
-        ret += " moder lwtr{0} 1001".format(self.matnum)
-        ret += " tmp {}".format(self.temp)
-        #ret += " rgb {0} {1} {2}".format(self.red, self.green, self.blue)
-        ret += "\n"
+        ret = "mat solution{0} sum moder lwtr{0} 1001 tmp {1}\n".format(self.matnum, self.temp)
         template = "{0}.{1} {2}\n"
         for ind, elem in enumerate(self.elems):
             ret += template.format(elem, self.xs_tag, self.ndens[ind])
