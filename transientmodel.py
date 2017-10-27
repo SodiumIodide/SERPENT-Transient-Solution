@@ -65,10 +65,21 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
         inner_radius = radius  # cm
     return materials
 
-def propagate_neutrons(k_eff, lifetime, beta_eff, neutrons):
+def propagate_power(k_eff, lifetime, beta_eff, power):
     '''Propagate the number of neutrons over delta-t'''
-    reactivity = (k_eff - 1) / k_eff
-    return neutrons * np.exp((reactivity - beta_eff) / lifetime * c.DELTA_T)
+    reactivity = (k_eff - 1) / k_eff  # dollars
+    prompt_gen_time = lifetime / k_eff  # s
+    return power * np.exp((reactivity - beta_eff) / prompt_gen_time * c.DELTA_T)
+
+def energy_dep_init(k_eff, lifetime, beta_eff):
+    '''Calculate the initial energy deposition at the start of the reaction'''
+    reactivity = (k_eff - 1) / k_eff  # dollars
+    prompt_gen_time = lifetime / k_eff  # s
+    period = prompt_gen_time / (reactivity - beta_eff)  # s
+    # Assuming an initiating accident of 1 fission per second at time t=0
+    # Note: np.log() is the natural logarithm
+    time = np.log(c.INIT_POWER / 1) * period  # s
+    return (period * (np.exp(time / period) - 1) * 1, time)  # fissions, s
 
 # This function is largely present for refactoring purposes
 def increase_height(height, incr):
@@ -125,6 +136,23 @@ def update_heights(materials):
             material.height_shift(shift)
             base_height = material.height  # cm, update for next axial layer
 
+def update_material_states(materials, fissions, tot_height):
+    '''Updates the state of all materials in profile'''
+    counter = 0  # Two inner loops prevent use of enumerate()
+    temperatures = []  # K, reset of list
+    for material_layer in materials:
+        # Pressure goes from top down, so materials reversed
+        top_pres = c.ATM  # MPa, gauge, changes by iteration
+        for material in reversed(material_layer):
+            material.update_state([fis for fis in reversed(fissions)][counter], top_pres)
+            top_pres = material.bot_pressure  # MPa, gauge
+            # Keep checks on total height such that void data doesn't get overwritten
+            if tot_height < material.height:
+                tot_height = material.height  # cm
+            temperatures.append(material.temp)  # K
+            counter += 1
+    return tot_height, temperatures  # cm, [K]
+
 def main():
     '''Main wrapper'''
     print("\nWelcome to the Transient Solution Modeling software.")
@@ -156,17 +184,19 @@ def main():
         for material in material_layer:
             temperatures.append(material.temp)
     maxtemp = max(temperatures)  # K
-    number_neutrons = c.INIT_NEUTRONS  # Start of the flux
+    power = c.INIT_POWER  # Start of the flux
     lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis
     timer = 0  # s
-    number_fissions = number_neutrons / nubar
-    total_fissions = number_fissions
+    integrated_fissions, init_time = energy_dep_init(keff, lifetime, beff)  # fissions
+    total_fissions = integrated_fissions  # fissions
+    number_fissions = power * c.DELTA_T  # fissions
     # Start results file
     with open('results.txt', 'w') as resfile:
         resfile.write("Time (s), Num Fissions, Total Fissions, Max Temperature, " + \
                       "Neutron Lifetime (s), nu-bar, b-eff, k-eff, k-eff+2sigma, Max Height (cm)\n")
     fo.record(timer, number_fissions, total_fissions, maxtemp, lifetime, nubar, beff,
               keff, keffmax, tot_height)
+    initial = True  # Flag to calculate integrated energy deposition with initial profile
     # Material addition loop
     print("Beginning main calculation...")
     # # Material expansion loop
@@ -176,27 +206,21 @@ def main():
         timer += c.DELTA_T  # s
         # Read previous output file for information and calculate new changes
         fission_profile = fo.count_fissions(detfilename)
-        number_neutrons = propagate_neutrons(keff, lifetime, beff, number_neutrons)
+        power = propagate_power(keff, lifetime, beff, power)  # fissions/s
         # Correlation between flux profile and fission density
-        fissions = [frac * number_neutrons / nubar for frac in fission_profile]
-        number_fissions = sum(fissions)
-        total_fissions += number_fissions
+        number_fissions = power * c.DELTA_T  # fissions
+        fissions = [frac * number_fissions for frac in fission_profile]  # fissions
+        total_fissions += number_fissions  # fissions
         # Begin total expansion of material
         if c.EXPANSION:
             update_heights(materials)
-        counter = 0  # Two inner loops prevent use of enumerate()
-        temperatures = []  # K, reset of list
-        for material_layer in materials:
-            # Pressure goes from top down, so materials reversed
-            top_pres = c.ATM  # MPa, gauge, changes by iteration
-            for material in reversed(material_layer):
-                material.update_state([fis for fis in reversed(fissions)][counter], top_pres)
-                top_pres = material.bot_pressure  # MPa, gauge
-                # Keep checks on total height such that void data doesn't get overwritten
-                if tot_height < material.height:
-                    tot_height = material.height
-                temperatures.append(material.temp)  # K
-                counter += 1
+        # Assume that initiating fission profile does not change from the initial calculation
+        if initial:
+            initial = False  # Only calculate one time
+            integrated_dist = [frac * integrated_fissions for frac in fission_profile]  # fissions
+            _, _ = update_material_states(materials, integrated_dist, tot_height)  # cm, [K]
+        tot_height, temperatures = update_material_states(materials, fissions,
+                                                          tot_height)  # cm, [K]
         maxtemp = max(temperatures)  # K
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
         filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).replace('.', '') \

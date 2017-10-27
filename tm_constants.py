@@ -27,7 +27,7 @@ THRESHOLD = 1.5e15  # fissions/liter
 SUBCRITICAL_LIMIT = 0.97  # Limit for k_eff at which the system is subcritical
 
 # Equation of state
-INIT_NEUTRONS = 1e15  # Small initiating fission accident source -> Flux build-up
+INIT_POWER = 1e18  # fis/s, small initiating fission accident source -> Flux build-up
 GRAV = 9.80665  # m/s^2
 #GRAV = 0.0  # m/s^2
 ATM_ABS = 101325  # Pa, atmospheric value
