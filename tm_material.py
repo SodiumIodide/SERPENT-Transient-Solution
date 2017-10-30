@@ -77,8 +77,10 @@ class Material():
     # Public function for refactoring purposes
     def append_height(self, newheight, add=False):
         '''Append a new volume after adjusting height'''
+        oldvol = self.volume  # cm^3
         self.height = self.height + newheight if add else newheight  # cm
         self.volume = self.base * (self.height - self.base_height)  # cm^3
+        self.delta_vol = self.volume - oldvol  # cm^3
         self.dens = self.mass / self.volume  # g/cm^3
         self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
 

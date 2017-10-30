@@ -68,8 +68,9 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
 def propagate_power(k_eff, lifetime, beta_eff, power):
     '''Propagate the number of neutrons over delta-t'''
     reactivity = (k_eff - 1) / k_eff  # dollars
-    prompt_gen_time = lifetime / k_eff  # s
-    return power * np.exp((reactivity - beta_eff) / prompt_gen_time * c.DELTA_T)
+    # TODO: Sort this
+    #prompt_gen_time = lifetime / k_eff  # s
+    return power * np.exp((reactivity - beta_eff) / lifetime * c.DELTA_T)
 
 def energy_dep_init(k_eff, lifetime, beta_eff):
     '''Calculate the initial energy deposition at the start of the reaction'''
@@ -77,7 +78,7 @@ def energy_dep_init(k_eff, lifetime, beta_eff):
     prompt_gen_time = lifetime / k_eff  # s
     period = prompt_gen_time / (reactivity - beta_eff)  # s
     # Assuming an initiating accident of 1 fission per second at time t=0
-    # Note: np.log() is the natural logarithm
+    # NOTE: np.log() is the natural logarithm
     time = np.log(c.INIT_POWER / 1) * period  # s
     return period * (np.exp(time / period) - 1) * 1  # fissions
 
@@ -101,7 +102,7 @@ def calc_radii(tot_rad):
 def update_com_accel(materials):
     '''
     Updates center of mass acceleration in each material
-    Called by the update_heights2() function, not explicitly calculated independently
+    Called by the update_heights() function, not explicitly calculated independently
     '''
     # Materials are arranged by radius, then by height
     # Annular materials are subject to the same pressure fluctuations
@@ -153,7 +154,7 @@ def update_material_states(materials, fissions, tot_height, initial=False):
             temperatures.append(material.temp)  # K
             pressures.append(material.av_pressure)  # MPa
             counter += 1
-    return tot_height, temperatures, pressures  # cm, [K]
+    return tot_height, temperatures, pressures  # cm, [K], [MPa]
 
 def main():
     '''Main wrapper'''
@@ -179,6 +180,7 @@ def main():
     fo.write_file(filename, materials, tot_height)
     outfilename = filename + "_res.m"
     detfilename = filename + "_det0.m"
+    # Execute SERPENT calculation
     if not path.isfile(outfilename):
         system("bash -c \"sss {}\"".format(filename))
     temperatures = []  # K
@@ -190,7 +192,7 @@ def main():
     maxtemp = max(temperatures)  # K
     maxpres = max(pressures)  # MPa
     power = c.INIT_POWER  # Start of the flux
-    lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis
+    lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)  # s, _, _, n/fis, _
     timer = 0  # s
     integrated_fissions = energy_dep_init(keff, lifetime, beff)  # fissions
     total_fissions = integrated_fissions  # fissions
@@ -221,12 +223,13 @@ def main():
         if initial:
             initial = False  # Only calculate one time
             integrated_dist = [frac * integrated_fissions for frac in fission_profile]  # fissions
-            _, _, _ = update_material_states(materials, integrated_dist, tot_height, initial)  # cm, [K]
+            _, _, _ = update_material_states(materials, integrated_dist, tot_height,
+                                             initial)  # cm, [K], [MPa]
         # Begin total expansion of material
         if c.EXPANSION:
             update_heights(materials)
         tot_height, temperatures, pressures = update_material_states(materials, fissions,
-                                                                     tot_height)  # cm, [K]
+                                                                     tot_height)  # cm, [K], [MPa]
         maxtemp = max(temperatures)  # K
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
         filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).replace('.', '') \
@@ -235,7 +238,7 @@ def main():
         detfilename = filename + "_det0.m"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
         fo.write_file(filename, materials, tot_height)
-        # NOTE: This should be "outfilename", but can be "filename" for debugging purposes
+        # NOTE: Conditional should be "outfilename", but can be "filename" for debugging purposes
         if not path.isfile(outfilename):
             system("bash -c \"sss {}\"".format(filename))
         lifetime, keff, keffmax, nubar, beff = fo.get_transient(outfilename)
