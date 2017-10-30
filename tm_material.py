@@ -90,7 +90,7 @@ class Material():
                          'Q', 0.0, 'WATER')  # 1/K
         kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
                           'Q', 0.0, 'WATER') * 1e6  # 1/MPa
-        surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER') / 1e6  # MN/m
+        surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER') * 1e-6  # MN/m
         if fissions / self.volume / 0.001 > c.THRESHOLD or self.gas_production_flag:  # fis/liter
             self.__produce_gas(fissions)
             if not self.gas_production_flag:
@@ -105,7 +105,7 @@ class Material():
                     * 1e-6  # MJ/kg-K
         if c.TEMPERATURE:
             self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-19 - self.beta \
-                              / self.kappa * self.delta_vol / 100**3) / (self.mass / 1000)  # K
+                              / self.kappa * self.delta_vol / 100**3 * self.temp) / (self.mass / 1000)  # K
             self.temp += self.delta_temp  # K
             self.__update_xs_tag()
             self.__update_sab_tag()
