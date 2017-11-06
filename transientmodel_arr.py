@@ -21,7 +21,8 @@ import re
 import numpy as np
 
 # Shared
-from tm_material import Material  # Requires CoolProp
+from tm_material_arr import Material  # Requires CoolProp
+from tm_volaccel import volume_mult_matrix
 import tm_constants as c
 import tm_fileops as fo
 
@@ -37,7 +38,7 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
     den = sum(dens)  # g/cm^3
     # Initial pressures are assumed to be linear, based on rho-g-h model
     # All pressures are absolute, not gauge
-    for ind, radius in enumerate(calc_radii(tot_radius)):
+    for radius in calc_radii(tot_radius):
         base_height = 0.0  # cm, start at planar origin
         r_list = []  # Second dimension empty list for appending
         # From bottom to top, heights being added
@@ -50,19 +51,15 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
             av_pres = den * c.GRAV * av_height / 1000 * 100**3 / 1e6 + c.ATM  # MPa
             # Equivalent to the height of the center of mass:
             com_height = tot_height - av_height * 100  # cm
-            if (ind == 0 and c.INNER_RAD > 0.0) or (ind == c.NUM_RADIAL - 1):
-                dissipate = 1
-            else:
-                dissipate = 0
             if 'temp' in kwargs:
                 temperature = kwargs['temp'][mat_counter - 1]  # K
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
                                        base_height, radius, inner_radius, com_height,
-                                       dissipate, av_pres, temperature))
+                                       av_pres, temperature))
             else:
                 r_list.append(Material(mat_counter, elems, ndens, den, height,
                                        base_height, radius, inner_radius, com_height,
-                                       dissipate, av_pres))
+                                       av_pres))
             mat_counter += 1
             base_height = height  # cm
         materials.append(r_list)
@@ -72,8 +69,9 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
 def propagate_power(k_eff, lifetime, beta_eff, power):
     '''Propagate the number of neutrons over delta-t'''
     reactivity = (k_eff - 1) / k_eff  # dollars
-    prompt_gen_time = lifetime / k_eff  # s
-    return power * np.exp((reactivity - beta_eff) / prompt_gen_time * c.DELTA_T)  # fis/s
+    # TODO: Sort this
+    #prompt_gen_time = lifetime / k_eff  # s
+    return power * np.exp((reactivity - beta_eff) / lifetime * c.DELTA_T)
 
 def energy_dep_init(k_eff, lifetime, beta_eff):
     '''Calculate the initial energy deposition at the start of the reaction'''
@@ -102,98 +100,55 @@ def calc_radii(tot_rad):
     radii = list(map(lambda ind: ind * rad_diff + c.INNER_RAD, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
 
-def update_com_accel(materials):
+# NOTE: Ideally shouldn't be explicitly called independently
+def update_vol_accel(materials):
     '''
-    Updates center of mass acceleration in each material
+    Updates volume acceleration in each material
     Called by the update_heights() function, not explicitly calculated independently
     '''
     # Materials are arranged by radius, then by height
     # Annular materials are subject to the same pressure fluctuations
     # -> i.e. assume no inter-region mixing, most expansion and transfer will occur
     # -> axially, along the axis of possible expansion (not into walls)
-    for ind, material_layer in enumerate(materials):
-        # Dissipation effects on the fluid regions next to the wall
-        dissipate = 1 if ind == (c.NUM_RADIAL - 1) or (ind == 0 and c.INNER_RAD > 0.0) else 0
+    for material_layer in materials:
         # All materials in each layer should be of the same mass and base area
         mat_mass = material_layer[0].mass / 1000  # kg
         mat_area = material_layer[0].base / 100**2  # m^2
-        top_pressure = c.ATM  # MPa, gauge, revised value at each stage
-        # Materials/pressures assigned bottom to top, need top to bottom
-        for material in reversed(material_layer):
-            com_accel = mat_area / mat_mass * (material.bot_pressure - top_pressure) \
-                        * 1e6 * 100 - c.GRAV * 100  # cm/s^2
-            if com_accel > c.DISSIPATION * material.com_vel:
-                com_accel -= c.DISSIPATION * np.abs(material.com_vel) * dissipate \
-                             * np.sign(com_accel)  # cm/s^2
-            else:
-                com_accel -= com_accel * dissipate  # cm/s^2
-            material.set_com_accel(com_accel)
-            top_pressure = material.bot_pressure  # MPa, gauge
+        mult_mat = volume_mult_matrix(c.NUM_AXIAL)  # Generic parameter term
+        # Note (syntax) that atmosphere is appended, not universally added
+        pres_vec = np.array([m.av_pressure for m in material_layer] + [c.ATM])  # MPa
+        diss_vec = np.array([2 * mat_area * c.DISSIPATION * m.vol_vel for m in material_layer])
+        vol_accel_vec = 4 * 1e6 * mat_area**2 / mat_mass * mult_mat.dot(pres_vec) * 100**3 \
+                        - diss_vec  # cm^3/s^2
+        print(vol_accel_vec)
+        for ind, material in enumerate(material_layer):
+            material.set_vol_accel(vol_accel_vec[ind])
 
-def update_heights(materials):
-    '''Ensures that the materials are appropriately layered'''
-    update_com_accel(materials)
-    # Each material needs to have its height and relative base height adjusted
-    # -> from the bottom, up; shift heights for no overlap
-    # Working on the assumption that pressure acceleration is a relative
-    # acceleration value, not an absolute acceleration
+def update_heights_arr(materials):
+    '''Updates the height information of each material'''
+    # Mostly here to decrease code bloat and containerize calculations
+    update_vol_accel(materials)
     for material_layer in materials:
-        base_height = 0.0  # cm, adjusted value by iteration
         for material in material_layer:
-            material.shift_height(base_height)
-            base_height = material.height  # cm, update for next axial layer
-
-def update_pressures(materials):
-    '''Changes the pressure values for the material definitions for each time step'''
-    top_pres = c.ATM  # MPa, gauge, top pressure of the reactor is set to atmospheric exposure
-    for material_layer in materials:
-        top_pres = c.ATM  # MPa, gauge, top pressure of the reactor is set to atmospheric exposure
-        for material in reversed(material_layer):
-            material.calc_bottom_pressure(top_pres)
-            top_pres = material.bot_pressure  # MPa, gauge
-
-# def update_material_states(materials, fissions, tot_height, initial=False):
-#     '''Updates the state of all materials in profile'''
-#     counter = 0  # Two inner loops prevent use of enumerate()
-#     temperatures = []  # K
-#     pressures = []  # MPa
-#     for material_layer in materials:
-#         for material in material_layer:
-#             material.update_state([fis for fis in fissions][counter], initial)
-#             # Keep checks on total height such that void data doesn't get overwritten
-#             if tot_height < material.height:
-#                 tot_height = material.height  # cm
-#             temperatures.append(material.temp)  # K
-#             pressures.append(material.av_pressure)  # MPa
-#             counter += 1
-#     return tot_height, temperatures, pressures  # cm, [K], [MPa]
+            material.update_height(c.DELTA_T)
 
 def update_material_states(materials, fissions, tot_height, initial=False):
     '''Updates the state of all materials in profile'''
     counter = 0  # Two inner loops prevent use of enumerate()
     temperatures = []  # K
     pressures = []  # MPa
-    heights = []  # cm
-    top_pressure = c.ATM  # MPa
     for material_layer in materials:
-        bot_height = 0.0  # cm
-        for material in material_layer:
-            material.update_temp(fissions[counter])
-            counter += 1
-        if not initial:
-            for material in reversed(material_layer):
-                material.update_pres()
-                material.update_vol(top_pressure)
-                top_pressure = material.bot_pressure  # MPa
-        for material in material_layer:
-            material.update_temp(0.0, decrease=True)
-            material.update_pres(decrease=True)
+        # Pressure goes from top down, so materials reversed
+        top_pres = c.ATM  # MPa, gauge, changes by iteration
+        for material in reversed(material_layer):
+            material.update_state([fis for fis in reversed(fissions)][counter], top_pres, initial)
+            top_pres = material.bot_pressure  # MPa, gauge
+            # Keep checks on total height such that void data doesn't get overwritten
+            if tot_height < material.height:
+                tot_height = material.height  # cm
             temperatures.append(material.temp)  # K
             pressures.append(material.av_pressure)  # MPa
-            material.shift_height(bot_height)
-            bot_height = material.height  # cm
-            heights.append(material.height)  # cm
-    tot_height = max(heights)  # cm
+            counter += 1
     return tot_height, temperatures, pressures  # cm, [K], [MPa]
 
 def main():
@@ -266,9 +221,8 @@ def main():
             _, _, _ = update_material_states(materials, integrated_dist, tot_height,
                                              initial)  # cm, [K], [MPa]
         # Begin total expansion of material
-        #if c.EXPANSION:
-        #    update_pressures(materials)
-        #    update_heights(materials)
+        if c.EXPANSION:
+            update_heights_arr(materials)
         tot_height, temperatures, pressures = update_material_states(materials, fissions,
                                                                      tot_height)  # cm, [K], [MPa]
         maxtemp = max(temperatures)  # K
