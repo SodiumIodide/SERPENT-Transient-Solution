@@ -58,28 +58,12 @@ class Material():
             self.__update_sab_tag()
         self.__calc_init()
 
-    # Setter method used here for clarity
-    def set_com_accel(self, newcoma):
-        '''Adjust center of mass acceleration'''
-        self.com_accel = newcoma  # cm/s^2
-        self.__update_com_height()
-
     def shift_height(self, baseheight):
         '''Shift each segment upwards by a set distance'''
         shift = baseheight - self.base_height  # cm
         self.base_height = baseheight  # cm
         self.height += shift  # cm
         self.com_height += shift  # cm
-
-    # Public function for refactoring purposes
-    def append_height(self, newheight, add=False):
-        '''Append a new volume after adjusting height'''
-        oldvol = self.volume  # cm^3
-        self.height = self.height + newheight if add else newheight  # cm
-        self.volume = self.base * (self.height - self.base_height)  # cm^3
-        self.delta_vol = self.volume - oldvol  # cm^3
-        self.dens = self.mass / self.volume  # g/cm^3
-        self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
 
     def update_temp(self, fissions, decrease=False):
         '''Update temperature of the solution based on energy input'''
@@ -113,6 +97,8 @@ class Material():
             self.com_accel = 0  # cm/s^2
         else:
             self.com_accel -= np.abs(dissipation) * np.sign(self.com_accel)  # cm/s^2
+        # Pressure gradient dampening factor
+        self.com_accel *= c.DAMPING_FACTOR  # cm/s^2
         com_vel_i = self.com_vel  # cm/s
         com_vel_f = com_vel_i + self.com_accel * c.DELTA_T  # cm/s
         self.com_vel = com_vel_f  # cm/s, update information for next snapshot
@@ -152,100 +138,6 @@ class Material():
             self.delta_pres = -(self.delta_vol / 100**3) / self.kappa * (self.volume / 100**3)  # MPa
         self.av_pressure += self.delta_pres  # MPa
 
-    def update_state(self, fissions, initial=False):
-        '''Self-regulate the expansion state of the material'''
-        # Material constants are assumed to closely match those of water for an
-        # aqueous solution
-        beta_0 = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,
-                         'Q', 0.0, 'WATER')  # 1/K
-        kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
-                          'Q', 0.0, 'WATER') * 1e6  # 1/MPa
-        surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER') * 1e-6  # MN/m
-        if fissions / self.volume / 0.001 > c.THRESHOLD or self.gas_production_flag:  # fis/liter
-            self.__produce_gas(fissions)
-            if not self.gas_production_flag:
-                self.gas_production_flag = True
-        self.beta = beta_0 * (1 - self.volfrac_gas) + self.volfrac_gas / self.temp \
-                    * (self.av_pressure + 2 * surf_tens / c.RAD_GAS_BUBBLE) \
-                    / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)  # 1/K
-        self.kappa = kappa_0 * (1 - self.volfrac_gas) + self.volfrac_gas \
-                     / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)  # 1/MPa
-        # Constant volume specific heat
-        spec_heat = PropsSI('O', 'T', self.temp, 'Q', 0.0, 'WATER') * 1e-6  # MJ/kg-K
-        old_vol = self.volume  # cm^3
-        delta = 1.0  # Placeholder on tolerance for volumetric convergence
-        del_vol = 0.0  # Placeholder for volumetric convergence
-        self.delta_vol = 0.0  # Temporary value for volumetric convergence
-        old_dens = self.dens  # g/cm^3
-        while delta > 1e-4:
-            del_vol = self.delta_vol  # cm^3
-            # 180 MeV deposited in solution per fission event
-            self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-19 \
-                              - self.beta / self.kappa * self.delta_vol / 100**3 * (self.temp - 273.15)) \
-                              / (self.mass / 1000)  # K
-            #print(f"Positive T: {1 / spec_heat * (fissions * 180 * 1.6022e-19) / (self.mass / 1000)}")
-            #print(f"Negative T: {- 1 / spec_heat * (self.beta / self.kappa * self.delta_vol / 100**3 * (self.temp - 273.15))}")
-            self.delta_pres = self.beta / self.kappa * self.delta_temp \
-                              - 1 / (self.kappa * self.volume) * self.delta_vol  # MPa
-            #print(f"Positive P: {self.beta / self.kappa * self.delta_temp}")
-            #print(f"Negative P: {- 1 / (self.kappa * self.volume) * self.delta_vol}")
-            self.dens = old_dens / (1 + self.beta * self.delta_temp) \
-                        / (1 - self.kappa * self.delta_pres)  # g/cm^3
-            self.delta_vol = old_dens / self.dens * old_vol - old_vol  # cm^3
-            delta = (self.delta_vol - del_vol) / self.delta_vol  # Percent difference
-            #print((1 + self.beta * self.delta_temp) * (1 - self.kappa * self.delta_pres))
-            print(self.delta_pres)
-            input()
-        self.__update_mat_height()
-        self.ndens = [atom * 1e-24 / self.volume for atom in self.atoms]  # a/b-cm
-        self.temp += self.delta_temp  # K
-        self.av_pressure += self.delta_pres  # MPa
-        self.__update_xs_tag()
-        self.__update_sab_tag()
-
-    # def update_state(self, fissions, initial=False):
-    #     '''Self-regulate the expansion state of the material'''
-    #     # Material constants are assumed to closely match those of water for an
-    #     # aqueous solution
-    #     beta_0 = PropsSI('ISOBARIC_EXPANSION_COEFFICIENT', 'T', self.temp,
-    #                      'Q', 0.0, 'WATER')  # 1/K
-    #     kappa_0 = PropsSI('ISOTHERMAL_COMPRESSIBILITY', 'T', self.temp,
-    #                       'Q', 0.0, 'WATER') * 1e6  # 1/MPa
-    #     surf_tens = PropsSI('I', 'T', self.temp, 'Q', 0.0, 'WATER') * 1e-6  # MN/m
-    #     if fissions / self.volume / 0.001 > c.THRESHOLD or self.gas_production_flag:  # fis/liter
-    #         self.__produce_gas(fissions)
-    #         if not self.gas_production_flag:
-    #             self.gas_production_flag = True
-    #     self.beta = beta_0 * (1 - self.volfrac_gas) + self.volfrac_gas / self.temp \
-    #                 * (self.av_pressure + 2 * surf_tens / c.RAD_GAS_BUBBLE) \
-    #                 / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)  # 1/K
-    #     self.kappa = kappa_0 * (1 - self.volfrac_gas) + self.volfrac_gas \
-    #                  / (self.av_pressure + 4 * surf_tens / 3 / c.RAD_GAS_BUBBLE)  # 1/MPa
-    #     # Constant volume specific heat
-    #     spec_heat = PropsSI('O', 'T', self.temp, 'Q', 0.0, 'WATER') * 1e-6  # MJ/kg-K
-    #     if c.TEMPERATURE:
-    #         # 180 MeV deposited in solution per fission event
-    #         self.delta_temp = 1 / spec_heat * (fissions * 180 * 1.6022e-19 \
-    #                           - self.beta / self.kappa * self.delta_vol / 100**3 * (self.temp - 273.15)) \
-    #                           / (self.mass / 1000)  # K
-    #         #print(f"Positive T: {1 / spec_heat * (fissions * 180 * 1.6022e-19) / (self.mass / 1000)}")
-    #         #print(f"Negative T: {- 1 / spec_heat * (self.beta / self.kappa * self.delta_vol / 100**3 * (self.temp - 273.15))}")
-    #         self.temp += self.delta_temp  # K
-    #         self.__update_xs_tag()
-    #         self.__update_sab_tag()
-    #         #print(f"Delta E: {fissions * 180 * 1.6022e-19}")
-    #         #print(f"Delta V: {self.delta_vol}")
-    #     # Don't account delta pressures into the back-end excursion energy calculation
-    #     # This can have negative impacts on the center of mass acceleration
-    #     if not initial:
-    #         self.delta_pres = self.beta / self.kappa * self.delta_temp \
-    #                           - 1 / (self.kappa * self.volume) * self.delta_vol  # MPa
-    #         #if self.delta_pres < 0.0:
-    #         #    self.delta_pres = 0.0
-    #         #print(f"Positive P: {self.beta / self.kappa * self.delta_temp}")
-    #         #print(f"Negative P: {- 1 / (self.kappa * self.volume) * self.delta_vol}")
-    #         self.av_pressure += self.delta_pres  # MPa
-
     def calc_bottom_pressure(self, top_pres=None):
         '''Called to calculate bottom pressure, overloaded with top pressure if known'''
         if top_pres is None:
@@ -253,31 +145,6 @@ class Material():
                                 * (self.height - self.base_height) / 2 * 100**2 / 1000 / 1e6  # MPa
         else:
             self.bot_pressure = 2 * self.av_pressure - top_pres  # MPa
-        #print(self.delta_pres)
-        #print(f"Top pressure: {top_pres}\nAv pressure: {self.av_pressure}\nBot pressure: {self.bot_pressure}\n")
-
-    # def update_mat_height(self, baseheight):
-    #     '''Change the material height'''
-    #     shift = baseheight - self.base_height  # cm
-    #     self.base_height = baseheight  # cm
-    #     self.com_height += shift  # cm
-    #     half_height = self.com_height - self.base_height  # cm
-    #     new_height = self.base_height + 2 * half_height  # cm
-    #     self.append_height(new_height)
-
-    def __update_mat_height(self):
-        '''Change the material height'''
-        mat_height = self.volume / self.base  # cm
-        self.height = self.base_height + mat_height  # cm
-
-    def __update_com_height(self):
-        '''Calculate new height based on volume acceleration and time'''
-        # Reliant on Newtonian kinematics equations
-        com_vel_i = self.com_vel  # cm/s
-        com_vel_f = com_vel_i + self.com_accel * c.DELTA_T  # cm/s
-        self.com_vel = com_vel_f  # cm/s, update information for next snapshot
-        self.delta_com = com_vel_i * c.DELTA_T + 1 / 2 * self.com_accel * c.DELTA_T**2  # cm
-        self.com_height += self.delta_com  # cm
 
     def __update_xs_tag(self):
         '''Update the materials cross-section tag; called when new temperature calculated'''
