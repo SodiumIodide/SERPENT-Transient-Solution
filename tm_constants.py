@@ -4,17 +4,7 @@
 '''
 Import only module. Contains constants for the Python calculations of solution
 criticality excursions.
-
-Dependencies:
-numpy for mathematical constants (if elected for use) and for color distribution
 '''
-
-import numpy as np
-
-# SILENE full system geometry
-#RAD = 16.3  # cm
-#INNER_RAD = 0.0  # cm
-#INIT_HEIGHT = 41.34  # cm
 
 # SILENE annular geometry
 #RAD = 18.0  # cm
@@ -29,7 +19,7 @@ INIT_HEIGHT = 23.5  # cm
 # Calculation parameters
 EXPANSION = True  # Allow for material to be expanded
 TEMPERATURE = True  # Allow for temperature to be increased
-DAMPING_FACTOR = 0.1  # Multiplier on the center of mass acceleration
+DAMPING_FACTOR = 0.01  # Multiplier on the center of mass acceleration
 TIMESTEP_MAGNITUDE = -4
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
 NUM_AXIAL = 5  # Currently limited to < 10 by Serpent definitions
@@ -56,17 +46,17 @@ RH2 = 8.3145 / (1.0078250321 * 2) * 100**3  # m^3-Pa/kg-K
 RADIOLYTIC_G = 2.30e-4  # kg/MJ
 DISSIPATION = 4400  # 1/s
 
-# Wood River uranyl nitrate
-ELEMS = ["1001", "7014", "8016", "92234", "92235", "92236", "92238", "11023"]
-NDENS = [6.254e-2, 1.568e-3, 3.574e-2, 1.059e-6, 1.685e-4, 4.347e-7, 1.169e-5, 6.504e-5]  # a/b-cm
-AWEIGHT = [1.0078250321, 14.003074005, 15.9949146196, 234.040952, 235.043930,
-           236.045568, 238.050788, 22.989769]  # g/mol
-
 # SILENE uranyl nitrate
 #ELEMS = ["1001", "7014", "8016", "92234", "92235", "92236", "92238"]
 #NDENS = [6.258e-2, 1.569e-3, 3.576e-2, 1.060e-6, 1.686e-4, 4.350e-7, 1.170e-5]  # a/b-cm
 #AWEIGHT = [1.0078250321, 14.003074005, 15.9949146196, 234.040952, 235.043930,
 #           236.045568, 238.050788]  # g/mol
+
+# Wood River uranyl nitrate
+ELEMS = ["1001", "7014", "8016", "92234", "92235", "92236", "92238", "11023"]
+NDENS = [6.254e-2, 1.568e-3, 3.574e-2, 1.059e-6, 1.685e-4, 4.347e-7, 1.169e-5, 6.504e-5]  # a/b-cm
+AWEIGHT = [1.0078250321, 14.003074005, 15.9949146196, 234.040952, 235.043930,
+           236.045568, 238.050788, 22.989769]  # g/mol
 
 # Convergence and entropy constants
 NUM_PARTICLES = 10000  # Neutrons per cycle

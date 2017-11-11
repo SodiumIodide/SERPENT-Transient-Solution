@@ -201,6 +201,7 @@ def main():
         tot_height, temperatures, pressures = update_material_states(materials, fissions,
                                                                      tot_height)  # cm, [K], [MPa]
         maxtemp = max(temperatures)  # K
+        maxpres = max(pressures)  # MPa
         timer_string = f"{round(timer, abs(c.TIMESTEP_MAGNITUDE)):.6f}"
         filename = re.sub(r'\d', r'', filename[:filename.rfind(".inp")]).replace('.', '') \
                    + timer_string + ".inp"
